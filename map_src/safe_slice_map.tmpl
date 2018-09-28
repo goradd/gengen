@@ -1,0 +1,355 @@
+package maps
+
+import (
+	"bytes"
+	"encoding/gob"
+	"encoding/json"
+	"sort"
+	"strings"
+	"sync"
+)
+
+// A Safe{{.KeyType}}{{.ValType}}SliceMap combines a map with a slice so that you can range over a
+// map in a predictable order. By default, the order will be the same order that items were inserted,
+// i.e. a FIFO list. This is similar to how PHP arrays work. You can change this order by providing a
+// sorting mechanism. However, this object is NOT safe for concurrent use.
+// The zero of this is usable immediately.
+// The Safe{{.KeyType}}{{.ValType}}SliceMap satisfies the {{.KeyType}}{{.ValType}}MapI interface.
+type Safe{{.KeyType}}{{.ValType}}SliceMap struct {
+	sync.RWMutex
+	items map[{{.keytype}}]{{.valtype}}
+	order []{{.keytype}}
+}
+
+func NewSafe{{.KeyType}}{{.ValType}}SliceMap() *Safe{{.KeyType}}{{.ValType}}SliceMap {
+	return new (Safe{{.KeyType}}{{.ValType}}SliceMap)
+}
+
+func NewSafe{{.KeyType}}{{.ValType}}SliceMapFrom(i {{.KeyType}}{{.ValType}}MapI) *Safe{{.KeyType}}{{.ValType}}SliceMap {
+	m := new (Safe{{.KeyType}}{{.ValType}}SliceMap)
+	m.Merge(i)
+	return m
+}
+
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) Copy() *Safe{{.KeyType}}{{.ValType}}SliceMap {
+	return NewSafe{{.KeyType}}{{.ValType}}SliceMapFrom(o)
+}
+
+// SetChanged sets the value, but also appends the value to the end of the list for when you
+// iterate over the list. Returns whether something changed, and if an error occurred. If the key
+// was already in the map, the order will not change, but the value will be replaced. If you want the
+// order to change, you must Remove then SetChanged
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) SetChanged(key {{.keytype}}, val {{.valtype}}) (changed bool) {
+	o.Lock()
+	defer o.Unlock()
+
+	var ok bool
+	var oldVal string
+
+	if o.items == nil {
+	    o.items = make(map[{{.keytype}}]{{.valtype}})
+	}
+
+	if oldVal, ok = o.items[key]; !ok || oldVal != val {
+		if !ok {
+			o.order = append(o.order, key)
+		}
+		o.items[key] = val
+		changed = true
+	}
+	return
+}
+
+// Set sets the given key to the given value
+// If the key already exists, the range order will not change.
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) Set(key {{.keytype}}, val {{.valtype}}) {
+	o.SetChanged(key, val)
+}
+
+// SetAt sets the given key to the given value, but also inserts it at the index specified.  If the index is bigger than
+// the length, or -1, it is the same as Set, in that it puts it at the end. Negative indexes are backwards from the
+// end, if smaller than the negative length, just inserts at the beginning.
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) SetAt(index int, key {{.keytype}}, val {{.valtype}}) {
+	var l int
+	o.RLock()
+	l = len(o.items)
+	o.RUnlock()
+
+	if index == -1 || index >= l {
+		o.Set(key, val)
+		return
+	}
+	
+	var ok bool
+	var emptyKey {{.keytype}}
+
+	o.Lock()
+	defer o.Unlock()
+
+	if _, ok = o.items[key]; !ok {
+		if index < -l {
+			index = 0
+		}
+		if index < 0 {
+			index = l + index + 1
+		}
+
+		o.order = append(o.order, emptyKey)
+		copy(o.order[index+1:], o.order[index:])
+		o.order[index] = key
+	}
+	o.items[key] = val
+	return
+}
+
+// Remove removes the item with the given key.
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) Remove(key {{.keytype}}) {
+	o.Lock()
+	defer o.Unlock()
+
+	for i, v := range o.order {
+		if v == key {
+			o.order = append(o.order[:i], o.order[i+1:]...)
+			break
+		}
+	}
+	delete(o.items, key)
+}
+
+// Get returns the value based on its key. If the key does not exist, it will return an empty value.
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) Get(key {{.keytype}}) (val {{.valtype}}) {
+	o.RLock()
+	defer o.RUnlock()
+
+    if o.items != nil {
+    	val, _ = o.items[key]
+    }
+	return
+}
+
+// Has returns true if the given key exists in the map.
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) Has(key {{.keytype}}) (ok bool) {
+ 	o.RLock()
+ 	defer o.RUnlock()
+
+   if o.items == nil {
+        return false
+    }
+	_, ok = o.items[key]
+	return
+}
+
+// GetAt returns the value based on its position.
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) GetAt(position int) (val {{.valtype}}) {
+	o.RLock()
+	defer o.RUnlock()
+	if position < len(o.order) && position >= 0 {
+		val, _ = o.items[o.order[position]]
+	}
+	return
+}
+
+
+// Strings returns a slice of the strings in the order they were added
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) Values() []{{.valtype}} {
+	o.RLock()
+	defer o.RUnlock()
+	vals := make([]string, len(o.order))
+
+    if o.items != nil {
+        for i, v := range o.order {
+            vals[i] = o.items[v]
+        }
+    }
+	return vals
+}
+
+// Keys are the keys of the strings, in the order they were added
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) Keys() []string {
+	o.RLock()
+	defer o.RUnlock()
+	vals := make([]string, len(o.order))
+
+    if len(o.order) != 0 {
+        for i, v := range o.order {
+            vals[i] = v
+        }
+    }
+	return vals
+}
+
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) Len() int {
+	o.RLock()
+	defer o.RUnlock()
+	return len(o.order)
+}
+
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) Less(i, j int) bool {
+	o.RLock()
+	defer o.RUnlock()
+	return o.items[o.order[i]] < o.items[o.order[j]]
+}
+
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) Swap(i, j int) {
+	o.Lock()
+	defer o.Unlock()
+	o.order[i], o.order[j] = o.order[j], o.order[i]
+}
+
+// Sort by keys interface
+type safe{{.keytype}}{{.valtype}}sortedbykeys struct {
+	// This embedded interface permits Reverse to use the methods of
+	// another interface implementation.
+	sort.Interface
+}
+
+// A helper function to allow Safe{{.KeyType}}{{.ValType}}SliceMaps to be sorted by keys
+// To sort the map by keys, call:
+//   sort.Sort(Order{{.KeyType}}{{.ValType}}StringSliceMapByKeys(m))
+func OrderSafe{{.KeyType}}{{.ValType}}SliceMapByKeys(o *Safe{{.KeyType}}{{.ValType}}SliceMap) sort.Interface {
+	return &safe{{.keytype}}{{.valtype}}sortedbykeys{o}
+}
+
+// A helper function to allow Safe{{.KeyType}}{{.ValType}}SliceMaps to be sorted by keys
+func (r safe{{.keytype}}{{.valtype}}sortedbykeys) Less(i, j int) bool {
+	var o *Safe{{.KeyType}}{{.ValType}}SliceMap = r.Interface.(*Safe{{.KeyType}}{{.ValType}}SliceMap)
+	o.RLock()
+	defer o.RUnlock()
+	return o.order[i] < o.order[j]
+}
+
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) MarshalBinary() (data []byte, err error) {
+	buf := new(bytes.Buffer)
+	encoder := gob.NewEncoder(buf)
+
+	o.RLock()
+	defer o.RUnlock()
+	err = encoder.Encode(o.items)
+	if err == nil {
+		err = encoder.Encode(o.order)
+	}
+	data = buf.Bytes()
+	return
+}
+
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) UnmarshalBinary(data []byte) error {
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	o.Lock()
+	defer o.Unlock()
+	err := dec.Decode(&o.items)
+	if err == nil {
+		err = dec.Decode(&o.order)
+	}
+	return err
+}
+
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) MarshalJSON() (data []byte, err error) {
+	// Json objects are unordered
+	o.RLock()
+	defer o.RUnlock()
+	data, err = json.Marshal(o.items)
+	return
+}
+
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) UnmarshalJSON(data []byte) error {
+	o.Lock()
+	defer o.Unlock()
+	err := json.Unmarshal(data, &o.items)
+	if err == nil {
+		// Create a default order, since these are inherently unordered
+		o.order = make([]string, len(o.items))
+		i := 0
+		for k := range o.items {
+			o.order[i] = k
+			i++
+		}
+	}
+	return err
+}
+
+
+// Merge the given map into the current one
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) Merge(i {{.KeyType}}{{.ValType}}MapI) {
+	if i != nil {
+		i.Range(func(k {{.keytype}}, v {{.valtype}}) bool {
+			o.Set(k, v)
+			return true
+		})
+	}
+}
+
+// Range will call the given function with every key and value in the order
+// they were placed in the map, or in if you sorted the map, in your custom order.
+// If f returns false, it stops the iteration. This pattern is taken from sync.Map.
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) Range(f func(key {{.keytype}}, value {{.valtype}}) bool) {
+	if o == nil || o.items == nil {
+		return
+	}
+	o.RLock()
+	defer o.RUnlock()
+	for _, k := range o.order {
+		if !f(k, o.items[k]) {
+			break
+		}
+	}
+}
+
+// Equals returns true if the map equals the given map, paying attention only to the content of the
+// map and not the order.
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) Equals(i {{.KeyType}}{{.ValType}}MapI) bool {
+	if i == nil {
+		return o == nil
+	}
+	if i.Len() != o.Len() {
+		return false
+	}
+	var ret = true
+
+	o.Range(func(k {{.keytype}}, v {{.valtype}}) bool {
+		if !i.Has(k) || v != i.Get(k) {
+			ret = false
+			return false
+		}
+		return true
+	})
+	return ret
+}
+
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) Clear() {
+	o.Lock()
+	defer o.Unlock()
+	o.items = nil
+	o.order = nil
+}
+
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) IsNil() bool {
+	return o == nil
+}
+
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) String() string {
+	var s string
+
+	s = "{"
+	o.Range(func(k, v string) bool {
+		s += `"` + k + `":"` +
+{{if eq .valtype "string" -}}
+        v
+{{- else -}}
+        fmt.Sprintf("%v", v)
+{{- end -}}
+		 + `",`
+		return true
+	})
+	s = strings.TrimRight(s, ",")
+	s += "}"
+	return s
+}
+
+{{if eq .valtype "string"}}
+// Join is just like strings.Join
+func (o *Safe{{.KeyType}}{{.ValType}}SliceMap) Join(glue string) string {
+	return strings.Join(o.Values(), glue)
+}
+{{end}}
+

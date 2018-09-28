@@ -1,0 +1,13 @@
+/*
+This config file sets up a map with a string key and an interface value.
+KeyType and ValType are blank since a string key is the default and an interface value is the default
+for these maps, and makes it easier to type.
+*/
+{
+  "package": "maps",
+  "KeyType": "",
+  "ValType": "",
+  "keytype": "string",
+  "valtype": "interface{}",
+  "valueIsInterface": "true"
+}

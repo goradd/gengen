@@ -1,0 +1,11 @@
+/*
+This config file sets up a map with a string key and a string value.
+KeyType is blank since a string key is the default for these maps, and makes it easier to type.
+*/
+{
+  "package": "maps",
+  "KeyType": "",
+  "ValType": "String",
+  "keytype": "string",
+  "valtype": "string"
+}

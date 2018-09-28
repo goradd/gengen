@@ -1,0 +1,181 @@
+package {{.package}}
+
+// {{.KeyType}}{{.ValType}}Map maps a {{.keytype}} to a {{.valtype}}.
+// This version is not safe for concurrent use.
+// A zero value is ready for use
+type {{.KeyType}}{{.ValType}}Map struct {
+    items map[{{.keytype}}]{{.valtype}}
+}
+
+// New{{.KeyType}}{{.ValType}}Map creates a new map that maps {{.keytype}}'s to {{.valtype}}'s.
+func New{{.KeyType}}{{.ValType}}Map() *{{.KeyType}}{{.ValType}}Map {
+	return new({{.KeyType}}{{.ValType}}Map)
+}
+
+// New{{.KeyType}}{{.ValType}}MapFrom creates a new {{.KeyType}}{{.ValType}}Map from a
+// {{.KeyType}}{{.ValType}}MapI interface object
+func New{{.KeyType}}{{.ValType}}MapFrom(i {{.KeyType}}{{.ValType}}MapI) *{{.KeyType}}{{.ValType}}Map {
+	m := New{{.KeyType}}{{.ValType}}Map()
+	m.Merge(i)
+	return m
+}
+
+// SetChanged sets the key to the value and returns a boolean indicating whether doing this caused
+// the map to change.
+func (o *{{.KeyType}}{{.ValType}}Map) SetChanged(key {{.keytype}}, val {{.valtype}}) (changed bool) {
+	var ok bool
+	var oldVal {{.valtype}}
+
+	if o == nil {
+		panic("The map must be created before being used.")
+	}
+
+	if o.items == nil {
+	    o.items = make(map[{{.keytype}}]{{.valtype}})
+	}
+
+	if oldVal, ok = o.items[key]; !ok || oldVal != val {
+		o.items[key] = val
+		changed = true
+	}
+	return
+}
+
+// Set will set the key to the value
+func (o *{{.KeyType}}{{.ValType}}Map) Set(key {{.keytype}}, val {{.valtype}}) {
+	if o == nil {
+		panic("The map must be initialized before being used.")
+	}
+
+    if o.items == nil {
+        o.items = make(map[{{.keytype}}]{{.valtype}})
+    }
+
+	o.items[key] = val
+}
+
+// Get returns the string based on its key. If it does not exist, an empty {{.keytype}} will be returned.
+func (o *{{.KeyType}}{{.ValType}}Map) Get(key {{.keytype}}) (val {{.valtype}}) {
+    if o == nil || o.items == nil {
+		return
+	}
+	val,_ = o.items[key]
+	return
+}
+
+// Has returns true if the given key exists in the map
+func (o *{{.KeyType}}{{.ValType}}Map) Has(key {{.keytype}}) (exists bool) {
+    if o == nil || o.items == nil {
+		return
+	}
+	_, exists = o.items[key]
+	return
+}
+
+
+// Remove deletes the given key from the map
+func (o *{{.KeyType}}{{.ValType}}Map) Remove(key {{.keytype}}) {
+    if o == nil || o.items == nil {
+		return
+	}
+	delete(o.items, key)
+}
+
+// Clear resets the map to an empty map
+func (o *{{.KeyType}}{{.ValType}}Map) Clear() {
+
+    if o == nil || o.items == nil {
+		return
+	}
+	o.items = nil
+}
+
+// Values returns a slice of the values
+func (o *{{.KeyType}}{{.ValType}}Map) Values() []{{.valtype}} {
+    if o == nil {
+        return nil
+    }
+
+	vals := make([]{{.valtype}}, 0, len(o.items))
+
+    for _, v := range o.items {
+        vals = append(vals, v)
+    }
+
+	return vals
+}
+
+// Keys returns a slice of the keys
+func (o *{{.KeyType}}{{.ValType}}Map) Keys() []{{.keytype}} {
+    if o == nil {
+        return nil
+    }
+
+	keys := make([]string, 0, len(o.items))
+
+    for k := range o.items {
+        keys = append(keys, k)
+    }
+	return keys
+}
+
+// Len returns the number of items in the map
+func (o *{{.KeyType}}{{.ValType}}Map) Len() int {
+    if o == nil {
+		return 0
+	}
+	return len(o.items)
+}
+
+// Range will call the given function with every key and value.
+// If f returns false, it stops the iteration. This pattern is taken from sync.Map.
+func (o *{{.KeyType}}{{.ValType}}Map) Range(f func(key {{.keytype}}, value {{.valtype}}) bool) {
+	if o == nil {
+		return
+	}
+	for k, v := range o.items {
+		if !f(k, v) {
+			break
+		}
+	}
+}
+
+// Merge merges the given string map with the current one. The given one takes precedent on collisions.
+func (o *{{.KeyType}}{{.ValType}}Map) Merge(i {{.KeyType}}{{.ValType}}MapI) {
+	if o == nil {
+		panic("The map must be created before being used.")
+	}
+
+	if o.items == nil {
+	    o.items = make(map[{{.keytype}}]{{.valtype}})
+	}
+	i.Range(func(k {{.keytype}}, v {{.valtype}}) bool {
+		o.items[k] = i.Get(k)
+		return true
+	})
+}
+
+// Equals returns true if all the keys in the given map exist in this map, and the values are the same
+func (o *{{.KeyType}}{{.ValType}}Map) Equals(i {{.KeyType}}{{.ValType}}MapI) bool {
+	if i.Len() != o.Len() {
+		return false
+	}
+	var ret = true
+
+	i.Range(func(k {{.keytype}}, v {{.valtype}}) bool {
+		if v2,ok := o.items[k]; !ok || v2 != v {
+			ret = false
+			return false // stop iterating
+		}
+		return true
+	})
+
+	return ret
+}
+
+func (o *{{.KeyType}}{{.ValType}}Map) Copy() *{{.KeyType}}{{.ValType}}Map {
+	m := New{{.KeyType}}{{.ValType}}Map()
+	m.Merge(o)
+	return m
+}
+

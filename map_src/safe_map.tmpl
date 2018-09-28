@@ -1,0 +1,277 @@
+package {{.package}}
+
+import (
+	"bytes"
+	"encoding/gob"
+	"encoding/json"
+	"sync"
+{{if .imports}}
+    {{.imports}}
+{{end}}
+)
+
+// SafeMap is your basic GO map with a read/write mutex so that it can read and write concurrently.
+// The zero map is ready for use, but you may not copy it after first using it.
+type Safe{{.KeyType}}{{.ValType}}Map struct {
+	sync.RWMutex
+	items map[{{.keytype}}]{{.valtype}}
+}
+
+// NewSafe{{.KeyType}}{{.ValType}}Map returns a newly created Safe{{.KeyType}}{{.ValType}}Map
+func NewSafe{{.KeyType}}{{.ValType}}Map() *Safe{{.KeyType}}{{.ValType}}Map {
+	return new (Safe{{.KeyType}}{{.ValType}}Map)
+}
+
+
+// NewSafe{{.KeyType}}{{.ValType}}MapFrom creates a new Safe{{.KeyType}}{{.ValType}}Map from a
+// {{.KeyType}}{{.ValType}}MapI interface object
+func NewSafe{{.KeyType}}{{.ValType}}MapFrom(i {{.KeyType}}{{.ValType}}MapI) *Safe{{.KeyType}}{{.ValType}}Map {
+	m := new(Safe{{.KeyType}}{{.ValType}}Map)
+	m.Merge(i)
+	return m
+}
+
+
+// Clear resets the map to an empty map
+func (o *Safe{{.KeyType}}{{.ValType}}Map) Clear() {
+	o.Lock()
+	defer o.Unlock()
+	o.items = nil
+}
+
+// SetChanged sets the key to the value and returns a boolean indicating whether doing this caused
+// the map to change.
+func (o *Safe{{.KeyType}}{{.ValType}}Map) SetChanged(key {{.keytype}}, val {{.valtype}}) (changed bool) {
+	var ok bool
+	var oldVal string
+
+	if o == nil {
+		panic("The map must be created before being used.")
+	}
+
+	o.Lock()
+	defer o.Unlock()
+
+	if o.items == nil {
+	    o.items = make(map[{{.keytype}}]{{.valtype}})
+	}
+
+	if oldVal, ok = o.items[key]; !ok || oldVal != val {
+		o.items[key] = val
+		changed = true
+	}
+	return
+}
+
+
+// Set sets the key to the given value
+func (o *Safe{{.KeyType}}{{.ValType}}Map) Set(key {{.keytype}}, val {{.valtype}}) {
+	if o == nil {
+		panic("The map must be created before being used.")
+	}
+	o.Lock()
+	defer o.Unlock()
+
+	if o.items == nil {
+	    o.items = make(map[{{.keytype}}]{{.valtype}})
+	}
+
+    o.items[key] = val
+}
+
+// Remove deletes the key from the map. If the key does not exist, nothing happens.
+func (o *Safe{{.KeyType}}{{.ValType}}Map) Remove(key {{.keytype}}) {
+    if o == nil || o.items == nil {
+		return
+	}
+	o.Lock()
+	delete(o.items, key)
+	o.Unlock()
+}
+
+// Get returns the string based on its key. If it does not exist, will return a zero {{.valtype}}.
+func (o *Safe{{.KeyType}}{{.ValType}}Map) Get(key {{.keytype}}) (val {{.valtype}}) {
+    if o == nil || o.items == nil {
+		return
+	}
+	o.RLock()
+	defer o.RUnlock()
+	val, _ = o.items[key]
+	return
+}
+
+// Has returns true if the given key exists in the map.
+func (o *Safe{{.KeyType}}{{.ValType}}Map) Has(key {{.keytype}}) (ok bool) {
+    if o == nil {
+        return
+    }
+	o.RLock()
+	defer o.RUnlock()
+	if o.items == nil {
+		return false
+	}
+
+	_, ok = o.items[key]
+	return
+}
+
+// Values returns a slice of the values. It will return an empty slice if the map is empty.
+func (o *Safe{{.KeyType}}{{.ValType}}Map) Values() []{{.valtype}} {
+	o.Lock()
+	defer o.Unlock()
+
+	if o.items == nil {
+	    return make([]{{.valtype}}, 0)
+	}
+
+	vals := make([]{{.valtype}}, 0, len(o.items))
+
+	for _, v := range o.items {
+		vals = append(vals, v)
+	}
+	return vals
+}
+
+// Keys returns a slice of the keys. It will return an empty slice if the map is empty.
+func (o *Safe{{.KeyType}}{{.ValType}}Map) Keys() []{{.keytype}} {
+	o.Lock()
+	defer o.Unlock()
+
+    if o.items == nil {
+        return make([]{{.valtype}}, 0)
+    }
+
+	vals := make([]{{.keytype}}, 0, len(o.items))
+
+	for k := range o.items {
+		vals = append(vals, k)
+	}
+	return vals
+}
+
+// Len returns the number of items in the map
+func (o *Safe{{.KeyType}}{{.ValType}}Map) Len() int {
+	return len(o.items)
+}
+
+// Range will call the given function with every key and value in the Safe{{.KeyType}}{{.ValType}}Map
+// During this process, the map will be locked, so do not pass a function that will be taking significant amounts of time
+// If f returns false, it stops the iteration. This pattern is taken from the golang sync.Map.Range function.
+func (o *Safe{{.KeyType}}{{.ValType}}Map) Range(f func(key {{.keytype}}, value {{.valtype}}) bool) {
+	if o == nil || o.items == nil {
+		return
+	}
+
+	o.RLock()
+	defer o.RUnlock()
+
+	for k, v := range o.items {
+		if !f(k, v) {
+			break
+		}
+	}
+}
+
+// MarshalBinary implements the BinaryMarshaler interface to convert a Safe{{.KeyType}}{{.ValType}}Map
+// to a byte stream.
+func (o *Safe{{.KeyType}}{{.ValType}}Map) MarshalBinary() ([]byte, error) {
+	var b bytes.Buffer
+
+	o.RLock()
+	defer o.RUnlock()
+
+	enc := gob.NewEncoder(&b)
+	err := enc.Encode(o.items)
+	return b.Bytes(), err
+}
+
+
+// UnmarshalBinary implements the BinaryUnmarshaler interface to convert a byte stream to a
+// Safe{{.KeyType}}{{.ValType}}Map
+func (o *Safe{{.KeyType}}{{.ValType}}Map) UnmarshalBinary(data []byte) error {
+	o.Lock()
+	defer o.Unlock()
+
+	b := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(b)
+	err := dec.Decode(&o.items)
+	return err
+}
+
+// MarshalJSON implements the json.Marshaler interface to convert the map into a JSON object.
+func (o *Safe{{.KeyType}}{{.ValType}}Map) MarshalJSON() (out []byte, err error) {
+	o.Lock()
+	defer o.Unlock()
+
+    out,err = json.Marshal(o.items)
+    return
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface to convert a json object to a Safe{{.KeyType}}{{.ValType}}Map.
+// The JSON must start with an object.
+func (o *Safe{{.KeyType}}{{.ValType}}Map) UnmarshalJSON(in []byte) (err error) {
+    var v map[{{.keytype}}]{{.valtype}}
+    err = json.Unmarshal(in, &v)
+    return
+}
+
+func (o *Safe{{.KeyType}}{{.ValType}}Map) Copy() {{.KeyType}}{{.ValType}}MapI {
+	cp := NewSafe{{.KeyType}}{{.ValType}}Map()
+
+	o.Range(func(key {{.keytype}}, value {{.valtype}}) bool {
+{{if .valueIsCopyable}}
+        value = value.Copy()
+{{else if .valueIsInterface}}
+		if copier, ok := value.({{.KeyType}}{{.ValType}}Copier); ok {
+			value = copier.Copy()
+		}
+{{end}}
+		cp.Set(key, value)
+		return true
+	})
+	return cp
+}
+
+// Merge merges the given string map with the current one. The given one takes precedent on collisions.
+func (o *Safe{{.KeyType}}{{.ValType}}Map) Merge(i {{.KeyType}}{{.ValType}}MapI) {
+	if i == nil {
+		return
+	}
+	o.Lock()
+	defer o.Unlock()
+
+    if o.items == nil {
+        o.items = make(map[{{.keytype}}]{{.valtype}}, i.Len())
+    }
+
+	i.Range(func(k {{.keytype}}, v {{.valtype}}) bool {
+		o.items[k] = v
+		return true
+	})
+}
+
+// Equals returns true if all the keys in the given map exist in this map, and the values are the same
+func (o *Safe{{.KeyType}}{{.ValType}}Map) Equals(i {{.KeyType}}{{.ValType}}MapI) bool {
+	if i.Len() != o.Len() {
+		return false
+	}
+	var ret = true
+
+	o.Lock()
+	defer o.Unlock()
+
+	i.Range(func(k string, v string) bool {
+		if v2,ok := o.items[k]; !ok || v2 != v {
+			ret = false
+			return false // stop iterating
+		}
+		return true
+	})
+
+	return ret
+}
+
+
+func init() {
+	gob.Register(new (Safe{{.KeyType}}{{.ValType}}Map))
+}
