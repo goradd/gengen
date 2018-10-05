@@ -10,7 +10,7 @@ type StringMapI interface {
 	Set(key string, val string)
 	Get(key string) (val string)
 	Has(key string) (exists bool)
-	Remove(key string)
+	Delete(key string)
 	Values() []string
 	Keys() []string
 	Len() int
@@ -19,4 +19,3 @@ type StringMapI interface {
 	Range(f func(key string, value string) bool)
 	Merge(i StringMapI)
 }
-

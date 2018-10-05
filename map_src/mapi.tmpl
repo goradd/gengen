@@ -10,7 +10,7 @@ type {{.KeyType}}{{.ValType}}MapI interface {
 	Set(key {{.keytype}}, val {{.valtype}})
 	Get(key {{.keytype}}) (val {{.valtype}})
 	Has(key {{.keytype}}) (exists bool)
-	Remove(key {{.keytype}})
+	Delete(key {{.keytype}})
 	Values() []{{.valtype}}
 	Keys() []{{.keytype}}
 	Len() int
@@ -19,4 +19,3 @@ type {{.KeyType}}{{.ValType}}MapI interface {
 	Range(f func(key {{.keytype}}, value {{.valtype}}) bool)
 	Merge(i {{.KeyType}}{{.ValType}}MapI)
 }
-

@@ -24,7 +24,8 @@ func NewSafe{{.KeyType}}{{.ValType}}Map() *Safe{{.KeyType}}{{.ValType}}Map {
 
 
 // NewSafe{{.KeyType}}{{.ValType}}MapFrom creates a new Safe{{.KeyType}}{{.ValType}}Map from a
-// {{.KeyType}}{{.ValType}}MapI interface object
+// {{.KeyType}}{{.ValType}}MapI interface object. If the individual data items are pointers or
+// interfaces, then the pointers or interfaces are copied, but not the underlying data
 func NewSafe{{.KeyType}}{{.ValType}}MapFrom(i {{.KeyType}}{{.ValType}}MapI) *Safe{{.KeyType}}{{.ValType}}Map {
 	m := new(Safe{{.KeyType}}{{.ValType}}Map)
 	m.Merge(i)
@@ -34,6 +35,7 @@ func NewSafe{{.KeyType}}{{.ValType}}MapFrom(i {{.KeyType}}{{.ValType}}MapI) *Saf
 
 // Clear resets the map to an empty map
 func (o *Safe{{.KeyType}}{{.ValType}}Map) Clear() {
+    if o == nil {return}
 	o.Lock()
 	defer o.Unlock()
 	o.items = nil
@@ -43,7 +45,7 @@ func (o *Safe{{.KeyType}}{{.ValType}}Map) Clear() {
 // the map to change.
 func (o *Safe{{.KeyType}}{{.ValType}}Map) SetChanged(key {{.keytype}}, val {{.valtype}}) (changed bool) {
 	var ok bool
-	var oldVal string
+	var oldVal {{.valtype}}
 
 	if o == nil {
 		panic("The map must be created before being used.")
@@ -138,7 +140,7 @@ func (o *Safe{{.KeyType}}{{.ValType}}Map) Keys() []{{.keytype}} {
 	defer o.Unlock()
 
     if o.items == nil {
-        return make([]{{.valtype}}, 0)
+        return make([]{{.keytype}}, 0)
     }
 
 	vals := make([]{{.keytype}}, 0, len(o.items))
@@ -171,6 +173,49 @@ func (o *Safe{{.KeyType}}{{.ValType}}Map) Range(f func(key {{.keytype}}, value {
 		}
 	}
 }
+
+
+// Merge merges the given map with the current one. The given one takes precedent on collisions.
+// If the items are pointers or interfaces, the only the pointers or interfaces are copied,
+// and the underlying data is not copied.
+func (o *Safe{{.KeyType}}{{.ValType}}Map) Merge(i {{.KeyType}}{{.ValType}}MapI) {
+	if i == nil {
+		return
+	}
+	o.Lock()
+	defer o.Unlock()
+
+    if o.items == nil {
+        o.items = make(map[{{.keytype}}]{{.valtype}}, i.Len())
+    }
+
+	i.Range(func(k {{.keytype}}, v {{.valtype}}) bool {
+		o.items[k] = v
+		return true
+	})
+}
+
+// Equals returns true if all the keys in the given map exist in this map, and the values are the same
+func (o *Safe{{.KeyType}}{{.ValType}}Map) Equals(i {{.KeyType}}{{.ValType}}MapI) bool {
+	if i.Len() != o.Len() {
+		return false
+	}
+	var ret = true
+
+	o.Lock()
+	defer o.Unlock()
+
+	i.Range(func(k {{.keytype}}, v {{.valtype}}) bool {
+		if v2,ok := o.items[k]; !ok || v2 != v {
+			ret = false
+			return false // stop iterating
+		}
+		return true
+	})
+
+	return ret
+}
+
 
 // MarshalBinary implements the BinaryMarshaler interface to convert a Safe{{.KeyType}}{{.ValType}}Map
 // to a byte stream.
@@ -215,6 +260,9 @@ func (o *Safe{{.KeyType}}{{.ValType}}Map) UnmarshalJSON(in []byte) (err error) {
     return
 }
 
+// Copy will make a copy of the map and a copy of the underlying data.
+// If the interfaces implement the {{.ValType}}Copier interface, the Copy function will
+// be called to deep copy the items.
 func (o *Safe{{.KeyType}}{{.ValType}}Map) Copy() {{.KeyType}}{{.ValType}}MapI {
 	cp := NewSafe{{.KeyType}}{{.ValType}}Map()
 
@@ -222,7 +270,7 @@ func (o *Safe{{.KeyType}}{{.ValType}}Map) Copy() {{.KeyType}}{{.ValType}}MapI {
 {{if .valueIsCopyable}}
         value = value.Copy()
 {{else if .valueIsInterface}}
-		if copier, ok := value.({{.KeyType}}{{.ValType}}Copier); ok {
+		if copier, ok := value.({{.ValType}}Copier); ok {
 			value = copier.Copy()
 		}
 {{end}}
@@ -230,45 +278,6 @@ func (o *Safe{{.KeyType}}{{.ValType}}Map) Copy() {{.KeyType}}{{.ValType}}MapI {
 		return true
 	})
 	return cp
-}
-
-// Merge merges the given string map with the current one. The given one takes precedent on collisions.
-func (o *Safe{{.KeyType}}{{.ValType}}Map) Merge(i {{.KeyType}}{{.ValType}}MapI) {
-	if i == nil {
-		return
-	}
-	o.Lock()
-	defer o.Unlock()
-
-    if o.items == nil {
-        o.items = make(map[{{.keytype}}]{{.valtype}}, i.Len())
-    }
-
-	i.Range(func(k {{.keytype}}, v {{.valtype}}) bool {
-		o.items[k] = v
-		return true
-	})
-}
-
-// Equals returns true if all the keys in the given map exist in this map, and the values are the same
-func (o *Safe{{.KeyType}}{{.ValType}}Map) Equals(i {{.KeyType}}{{.ValType}}MapI) bool {
-	if i.Len() != o.Len() {
-		return false
-	}
-	var ret = true
-
-	o.Lock()
-	defer o.Unlock()
-
-	i.Range(func(k string, v string) bool {
-		if v2,ok := o.items[k]; !ok || v2 != v {
-			ret = false
-			return false // stop iterating
-		}
-		return true
-	})
-
-	return ret
 }
 
 

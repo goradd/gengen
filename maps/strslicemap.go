@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"sort"
 	"strings"
+
 )
 
 // A StringSliceMap combines a map with a slice so that you can range over a
@@ -29,15 +30,25 @@ func NewStringSliceMapFrom(i StringMapI) *StringSliceMap {
 	return m
 }
 
-func (o *StringSliceMap) Copy() *StringSliceMap {
-	return NewStringSliceMapFrom(o)
+// Copy will make a copy of the map and a copy of the underlying data.
+// If the interfaces implement the StringCopier interface, the Copy function will
+// be called to deep copy the items.
+func (o *StringSliceMap) Copy() StringMapI {
+	cp := NewStringSliceMap()
+
+	o.Range(func(key string, value string) bool {
+
+		cp.Set(key, value)
+		return true
+	})
+	return cp
 }
 
 
 // SetChanged sets the value, but also appends the value to the end of the list for when you
 // iterate over the list. Returns whether something changed, and if an error occurred. If the key
 // was already in the map, the order will not change, but the value will be replaced. If you want the
-// order to change, you must Remove then SetChanged
+// order to change, you must Delete then SetChanged
 func (o *StringSliceMap) SetChanged(key string, val string) (changed bool) {
 	var ok bool
 	var oldVal string
@@ -89,8 +100,8 @@ func (o *StringSliceMap) SetAt(index int, key string, val string)  {
 	o.items[key] = val
 }
 
-// Remove removes the item with the given key.
-func (o *StringSliceMap) Remove(key string) {
+// Delete removes the item with the given key.
+func (o *StringSliceMap) Delete(key string) {
 	for i, v := range o.order {
 		if v == key {
 			o.order = append(o.order[:i], o.order[i+1:]...)
@@ -150,20 +161,27 @@ func (o *StringSliceMap) Keys() []string {
 	return vals
 }
 
+// Len returns the number of items in the slice
 func (o *StringSliceMap) Len() int {
 	return len(o.order)
 }
 
+// Less is part of the interface that allows the map to be sorted by values.
+// It returns true if the value at position i should be sorted before the value at position j.
 func (o *StringSliceMap) Less(i, j int) bool {
+
 	return o.items[o.order[i]] < o.items[o.order[j]]
+
 }
 
+// Swap is part of the interface that allows the slice to be sorted. It swaps the positions
+// of the items and position i and j.
 func (o *StringSliceMap) Swap(i, j int) {
 	o.order[i], o.order[j] = o.order[j], o.order[i]
 }
 
 // Sort by keys interface
-type stringstringsortedbykeys struct {
+type sortStringbykeys struct {
 	// This embedded interface permits Reverse to use the methods of
 	// another interface implementation.
 	sort.Interface
@@ -173,13 +191,15 @@ type stringstringsortedbykeys struct {
 // To sort the map by keys, call:
 //   sort.Sort(OrderStringStringSliceMapByKeys(m))
 func OrderStringSliceMapByKeys(o *StringSliceMap) sort.Interface {
-	return &stringstringsortedbykeys{o}
+	return &sortStringbykeys{o}
 }
 
 // A helper function to allow StringSliceMaps to be sorted by keys
-func (r stringstringsortedbykeys) Less(i, j int) bool {
+func (r sortStringbykeys) Less(i, j int) bool {
 	var o *StringSliceMap = r.Interface.(*StringSliceMap)
+
 	return o.order[i] < o.order[j]
+
 }
 
 func (o *StringSliceMap) MarshalBinary() (data []byte, err error) {
@@ -271,6 +291,7 @@ func (o *StringSliceMap) Equals(i StringMapI) bool {
 }
 
 func (o *StringSliceMap) Clear() {
+    if o == nil {return}
 	o.items = nil
 	o.order = nil
 }
@@ -283,7 +304,7 @@ func (o *StringSliceMap) String() string {
 	var s string
 
 	s = "{"
-	o.Range(func(k, v string) bool {
+	o.Range(func(k string, v string) bool {
 		s += `"` + k + `":"` +
 v+ `",`
 		return true

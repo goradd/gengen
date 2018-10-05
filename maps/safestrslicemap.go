@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
 )
 
 // A SafeStringSliceMap combines a map with a slice so that you can range over a
@@ -31,14 +32,24 @@ func NewSafeStringSliceMapFrom(i StringMapI) *SafeStringSliceMap {
 	return m
 }
 
-func (o *SafeStringSliceMap) Copy() *SafeStringSliceMap {
-	return NewSafeStringSliceMapFrom(o)
+// Copy will make a copy of the map and a copy of the underlying data.
+// If the interfaces implement the StringCopier interface, the Copy function will
+// be called to deep copy the items.
+func (o *SafeStringSliceMap) Copy() StringMapI {
+	cp := NewSafeStringSliceMap()
+
+	o.Range(func(key string, value string) bool {
+
+		cp.Set(key, value)
+		return true
+	})
+	return cp
 }
 
 // SetChanged sets the value, but also appends the value to the end of the list for when you
 // iterate over the list. Returns whether something changed, and if an error occurred. If the key
 // was already in the map, the order will not change, but the value will be replaced. If you want the
-// order to change, you must Remove then SetChanged
+// order to change, you must Delete then SetChanged
 func (o *SafeStringSliceMap) SetChanged(key string, val string) (changed bool) {
 	o.Lock()
 	defer o.Unlock()
@@ -102,8 +113,8 @@ func (o *SafeStringSliceMap) SetAt(index int, key string, val string) {
 	return
 }
 
-// Remove removes the item with the given key.
-func (o *SafeStringSliceMap) Remove(key string) {
+// Delete removes the item with the given key.
+func (o *SafeStringSliceMap) Delete(key string) {
 	o.Lock()
 	defer o.Unlock()
 
@@ -187,7 +198,9 @@ func (o *SafeStringSliceMap) Len() int {
 func (o *SafeStringSliceMap) Less(i, j int) bool {
 	o.RLock()
 	defer o.RUnlock()
+
 	return o.items[o.order[i]] < o.items[o.order[j]]
+
 }
 
 func (o *SafeStringSliceMap) Swap(i, j int) {
@@ -197,7 +210,7 @@ func (o *SafeStringSliceMap) Swap(i, j int) {
 }
 
 // Sort by keys interface
-type safestringstringsortedbykeys struct {
+type safesortStringbykeys struct {
 	// This embedded interface permits Reverse to use the methods of
 	// another interface implementation.
 	sort.Interface
@@ -207,15 +220,17 @@ type safestringstringsortedbykeys struct {
 // To sort the map by keys, call:
 //   sort.Sort(OrderStringStringSliceMapByKeys(m))
 func OrderSafeStringSliceMapByKeys(o *SafeStringSliceMap) sort.Interface {
-	return &safestringstringsortedbykeys{o}
+	return &safesortStringbykeys{o}
 }
 
 // A helper function to allow SafeStringSliceMaps to be sorted by keys
-func (r safestringstringsortedbykeys) Less(i, j int) bool {
+func (r safesortStringbykeys) Less(i, j int) bool {
 	var o *SafeStringSliceMap = r.Interface.(*SafeStringSliceMap)
 	o.RLock()
 	defer o.RUnlock()
+
 	return o.order[i] < o.order[j]
+
 }
 
 func (o *SafeStringSliceMap) MarshalBinary() (data []byte, err error) {
@@ -317,6 +332,7 @@ func (o *SafeStringSliceMap) Equals(i StringMapI) bool {
 }
 
 func (o *SafeStringSliceMap) Clear() {
+    if o == nil {return}
 	o.Lock()
 	defer o.Unlock()
 	o.items = nil
@@ -331,7 +347,7 @@ func (o *SafeStringSliceMap) String() string {
 	var s string
 
 	s = "{"
-	o.Range(func(k, v string) bool {
+	o.Range(func(k string, v string) bool {
 		s += `"` + k + `":"` +
 v+ `",`
 		return true

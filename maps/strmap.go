@@ -1,8 +1,15 @@
 package maps
 
+import (
+	"bytes"
+	"encoding/gob"
+	"encoding/json"
+
+)
+
 // StringMap maps a string to a string.
 // This version is not safe for concurrent use.
-// A zero value is ready for use
+// A zero value is ready for use, but you may not copy it after first using it.
 type StringMap struct {
     items map[string]string
 }
@@ -20,8 +27,17 @@ func NewStringMapFrom(i StringMapI) *StringMap {
 	return m
 }
 
+// Clear resets the map to an empty map
+func (o *StringMap) Clear() {
+    if o == nil {
+		return
+	}
+	o.items = nil
+}
+
 // SetChanged sets the key to the value and returns a boolean indicating whether doing this caused
-// the map to change.
+// the map to change. It will return true if the key did not first exist, or if the value associated
+// with the key was different than the new value.
 func (o *StringMap) SetChanged(key string, val string) (changed bool) {
 	var ok bool
 	var oldVal string
@@ -29,7 +45,6 @@ func (o *StringMap) SetChanged(key string, val string) (changed bool) {
 	if o == nil {
 		panic("The map must be created before being used.")
 	}
-
 	if o.items == nil {
 	    o.items = make(map[string]string)
 	}
@@ -41,12 +56,11 @@ func (o *StringMap) SetChanged(key string, val string) (changed bool) {
 	return
 }
 
-// Set will set the key to the value
+// Set sets the key to the given value
 func (o *StringMap) Set(key string, val string) {
 	if o == nil {
 		panic("The map must be initialized before being used.")
 	}
-
     if o.items == nil {
         o.items = make(map[string]string)
     }
@@ -56,83 +70,90 @@ func (o *StringMap) Set(key string, val string) {
 
 // Get returns the string based on its key. If it does not exist, an empty string will be returned.
 func (o *StringMap) Get(key string) (val string) {
-    if o == nil || o.items == nil {
+    if o == nil {
 		return
 	}
-	val,_ = o.items[key]
+	if o.items != nil {
+	    val,_ = o.items[key]
+	}
 	return
 }
 
-// Has returns true if the given key exists in the map
+// Delete removes the key from the map. If the key does not exist, nothing happens.
+func (o *StringMap) Delete(key string) {
+    if o == nil {
+		return
+	}
+ 	if o.items != nil {
+	    delete(o.items, key)
+	}
+}
+
+
+// Has returns true if the given key exists in the map.
 func (o *StringMap) Has(key string) (exists bool) {
-    if o == nil || o.items == nil {
+    if o == nil {
 		return
 	}
-	_, exists = o.items[key]
+    if o.items != nil {
+ 	    _, exists = o.items[key]
+    }
 	return
 }
 
+// Values returns a slice of the values. It will return a nil slice if the map is empty.
+// Multiple calls to Values will result in the same list of values, but may be in a different order.
+func (o *StringMap) Values() (vals []string) {
+    if o == nil {
+        return
+    }
+    if len(o.items) > 0 {
+        vals = make([]string, len(o.items))
 
-// Remove deletes the given key from the map
-func (o *StringMap) Remove(key string) {
-    if o == nil || o.items == nil {
-		return
-	}
-	delete(o.items, key)
+        var i int
+        for _, v := range o.items {
+            vals[i] = v
+            i++
+        }
+    }
+
+	return
 }
 
-// Clear resets the map to an empty map
-func (o *StringMap) Clear() {
-
-    if o == nil || o.items == nil {
-		return
-	}
-	o.items = nil
-}
-
-// Values returns a slice of the values
-func (o *StringMap) Values() []string {
+// Keys returns a slice of the keys. It will return a nil slice if the map is empty.
+// Multiple calls to Keys will result in the same list of keys, but may be in a different order.
+func (o *StringMap) Keys() (keys []string) {
     if o == nil {
         return nil
     }
+    if len(o.items) > 0 {
+        keys = make([]string, len(o.items))
 
-	vals := make([]string, 0, len(o.items))
-
-    for _, v := range o.items {
-        vals = append(vals, v)
+        var i int
+        for k := range o.items {
+            keys[i] = k
+            i++
+        }
     }
-
-	return vals
-}
-
-// Keys returns a slice of the keys
-func (o *StringMap) Keys() []string {
-    if o == nil {
-        return nil
-    }
-
-	keys := make([]string, 0, len(o.items))
-
-    for k := range o.items {
-        keys = append(keys, k)
-    }
-	return keys
+	return
 }
 
 // Len returns the number of items in the map
-func (o *StringMap) Len() int {
+func (o *StringMap) Len() (l int) {
     if o == nil {
-		return 0
+		return
 	}
-	return len(o.items)
+    l = len(o.items)
+	return
 }
 
-// Range will call the given function with every key and value.
+// Range will call the given function with every key and value in the map.
 // If f returns false, it stops the iteration. This pattern is taken from sync.Map.
 func (o *StringMap) Range(f func(key string, value string) bool) {
 	if o == nil {
 		return
 	}
+
 	for k, v := range o.items {
 		if !f(k, v) {
 			break
@@ -140,25 +161,32 @@ func (o *StringMap) Range(f func(key string, value string) bool) {
 	}
 }
 
-// Merge merges the given string map with the current one. The given one takes precedent on collisions.
+// Merge merges the given  map with the current one. The given one takes precedent on collisions.
 func (o *StringMap) Merge(i StringMapI) {
+	if i == nil {
+		return
+	}
+
 	if o == nil {
 		panic("The map must be created before being used.")
 	}
 
 	if o.items == nil {
-	    o.items = make(map[string]string)
+	    o.items = make(map[string]string, i.Len())
 	}
 	i.Range(func(k string, v string) bool {
-		o.items[k] = i.Get(k)
+		o.items[k] = v
 		return true
 	})
 }
 
 // Equals returns true if all the keys in the given map exist in this map, and the values are the same
 func (o *StringMap) Equals(i StringMapI) bool {
-	if i.Len() != o.Len() {
+    len := o.Len()
+	if i.Len() != len {
 		return false
+	} else if len == 0 { // both are zero
+	    return true
 	}
 	var ret = true
 
@@ -173,9 +201,59 @@ func (o *StringMap) Equals(i StringMapI) bool {
 	return ret
 }
 
-func (o *StringMap) Copy() *StringMap {
-	m := NewStringMap()
-	m.Merge(o)
-	return m
+// Copy will make a copy of the map and a copy of the underlying data.
+func (o *StringMap) Copy() StringMapI {
+	cp := NewStringMap()
+
+	o.Range(func(key string, value string) bool {
+
+
+
+
+		cp.Set(key, value)
+		return true
+	})
+	return cp
 }
 
+// MarshalBinary implements the BinaryMarshaler interface to convert the map to a byte stream.
+func (o *StringMap) MarshalBinary() ([]byte, error) {
+	var b bytes.Buffer
+
+ 	enc := gob.NewEncoder(&b)
+	err := enc.Encode(o.items)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements the BinaryUnmarshaler interface to convert a byte stream to a
+// StringMap
+func (o *StringMap) UnmarshalBinary(data []byte) (err error) {
+    var v map[string]string
+
+	b := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(b)
+	if err = dec.Decode(&v); err == nil {
+        o.items = v
+	}
+	return err
+}
+
+// MarshalJSON implements the json.Marshaler interface to convert the map into a JSON object.
+func (o *StringMap) MarshalJSON() (out []byte, err error) {
+    out,err = json.Marshal(o.items)
+    return
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface to convert a json object to a StringMap.
+// The JSON must start with an object.
+func (o *StringMap) UnmarshalJSON(in []byte) (err error) {
+    var v map[string]string
+    if err = json.Unmarshal(in, &v); err == nil {
+        o.items = v
+    }
+    return
+}
+
+func init() {
+	gob.Register(new (StringMap))
+}

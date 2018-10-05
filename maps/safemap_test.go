@@ -1,4 +1,4 @@
-package {{.package}}
+package maps
 
 import (
 	"fmt"
@@ -6,10 +6,10 @@ import (
 	"testing"
 )
 
-func Test{{.MapType}}Map(t *testing.T) {
+func TestSafeMap(t *testing.T) {
 	var v interface{}
 
-	m := New{{.MapType}}Map()
+	m := NewSafeMap()
 
 	m.Set("B", "This")
 	m.Set("A", "That")
@@ -79,11 +79,11 @@ func Test{{.MapType}}Map(t *testing.T) {
 
 }
 
-func Test{{.MapType}}Empty(t *testing.T) {
-    var m *{{.MapType}}Map
-    var n = new({{.MapType}}Map)
+func TestSafeEmpty(t *testing.T) {
+    var m *SafeMap
+    var n = new(SafeMap)
 
-    for _, o := range ([]*{{.MapType}}Map{m, n}) {
+    for _, o := range ([]*SafeMap{m, n}) {
         i := o.Get("A")
         if i != nil {
             t.Error("Empty Get failed")
@@ -117,8 +117,8 @@ func Test{{.MapType}}Empty(t *testing.T) {
 
 }
 
-func Test{{.MapType}}MapChange(t *testing.T) {
-	m := New{{.MapType}}Map()
+func TestSafeMapChange(t *testing.T) {
+	m := NewSafeMap()
 
 	m.Set("B", "This")
 	m.Set("A", "That")
@@ -137,11 +137,11 @@ func Test{{.MapType}}MapChange(t *testing.T) {
     }
 }
 
-func Test{{.MapType}}MapNotEqual(t *testing.T) {
-	m := New{{.MapType}}Map()
+func TestSafeMapNotEqual(t *testing.T) {
+	m := NewSafeMap()
 	m.Set("A", "This")
 	m.Set("B","That")
-	n := New{{.MapType}}Map()
+	n := NewSafeMap()
 	n.Set("B", "This")
 	n.Set("A","That")
 	if m.Equals(n) {
@@ -149,15 +149,15 @@ func Test{{.MapType}}MapNotEqual(t *testing.T) {
 	}
 }
 
-func Example{{.MapType}}Map_Set() {
-	m := New{{.MapType}}Map()
+func ExampleSafeMap_Set() {
+	m := NewSafeMap()
 	m.Set("a", "Here")
 	fmt.Println(m.Get("a"))
 	// Output Here
 }
 
-func Example{{.MapType}}Map_Values() {
-	m := New{{.MapType}}Map()
+func ExampleSafeMap_Values() {
+	m := NewSafeMap()
 	m.Set("B", "This")
 	m.Set("A", "That")
 	m.Set("C", 5)
@@ -172,8 +172,8 @@ func Example{{.MapType}}Map_Values() {
 	//Output: [5 That This]
 }
 
-func Example{{.MapType}}Map_Keys() {
-	m := New{{.MapType}}Map()
+func ExampleSafeMap_Keys() {
+	m := NewSafeMap()
 	m.Set("B", "This")
 	m.Set("A", "That")
 	m.Set("C", "Other")
@@ -184,8 +184,8 @@ func Example{{.MapType}}Map_Keys() {
 	//Output: [A B C]
 }
 
-func Example{{.MapType}}Map_Range() {
-	m := New{{.MapType}}Map()
+func ExampleSafeMap_Range() {
+	m := NewSafeMap()
 	a := []string{}
 
 	m.Set("B", "This")
@@ -203,14 +203,14 @@ func Example{{.MapType}}Map_Range() {
 	//Output: [5 That This]
 }
 
-func Example{{.MapType}}Map_Merge() {
-	m := New{{.MapType}}Map()
+func ExampleSafeMap_Merge() {
+	m := NewSafeMap()
 
 	m.Set("B", "This")
 	m.Set("A", "That")
 	m.Set("C", "Other")
 
-    n := New{{.MapType}}Map()
+    n := NewSafeMap()
     n.Set("D",5)
 	m.Merge(n)
 
@@ -218,20 +218,20 @@ func Example{{.MapType}}Map_Merge() {
 	//Output: 5
 }
 
-func ExampleNew{{.MapType}}MapFrom() {
-    n := New{{.MapType}}Map()
+func ExampleNewSafeMapFrom() {
+    n := NewSafeMap()
     n.Set("a", "this")
     n.Set("b", 5)
-	m := New{{.MapType}}MapFrom(n)
+	m := NewSafeMapFrom(n)
 	fmt.Println(m.Get("b"))
 	//Output: 5
 }
 
-func Example{{.MapType}}Map_Equals() {
-	m := New{{.MapType}}Map()
+func ExampleSafeMap_Equals() {
+	m := NewSafeMap()
 	m.Set("A","This")
 	m.Set("B", "That")
-	n := New{{.MapType}}Map()
+	n := NewSafeMap()
 	n.Set("B", "That")
 	n.Set("A", "This")
 	if m.Equals(n) {
@@ -244,26 +244,26 @@ func Example{{.MapType}}Map_Equals() {
 
 // Test the ability of the copy operation to do a deep copy if available
 
-type toCopy{{.MapType}} struct {
+type toCopySafe struct {
     A int
     b string
 }
 
-func (c *toCopy{{.MapType}}) Copy() interface{} {   // normally this would be a more descriptive interface
-    m := &toCopy{{.MapType}}{}
+func (c *toCopySafe) Copy() interface{} {   // normally this would be a more descriptive interface
+    m := &toCopySafe{}
     m.A = c.A
     m.b = c.b
     return m
 }
 
-func Test{{.MapType}}Copy(t *testing.T) {
-    var c = toCopy{{.MapType}}{2,"s"}
-    m := New{{.MapType}}Map()
+func TestSafeCopy(t *testing.T) {
+    var c = toCopySafe{2,"s"}
+    m := NewSafeMap()
     m.Set("this", &c)
     n := m.Copy()
     c.A = 5
-    if n.Get("this").(*toCopy{{.MapType}}).A != 2 {
-       t.Error(fmt.Sprintf("Simulated copy failed. A = %d", n.Get("this").(*toCopy{{.MapType}}).A ))
+    if n.Get("this").(*toCopySafe).A != 2 {
+       t.Error(fmt.Sprintf("Simulated copy failed. A = %d", n.Get("this").(*toCopySafe).A ))
     }
 }
 

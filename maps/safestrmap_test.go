@@ -23,7 +23,7 @@ func TestSafeStringMap(t *testing.T) {
 		t.Errorf("Strings test failed. Expected  (%q) got (%q).", "Other", s)
 	}
 
-	m.Remove("A")
+	m.Delete("A")
 
 	if m.Len() != 2 {
 		t.Error("Len Failed.")

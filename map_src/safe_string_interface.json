@@ -10,5 +10,5 @@ for these maps, and makes it easier to type.
   "keytype": "string",
   "valtype": "interface{}",
   "valueIsInterface": "true",
-  "Safe": ""
+  "Safe": "Safe"
 }

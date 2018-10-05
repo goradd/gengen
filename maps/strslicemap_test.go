@@ -42,12 +42,12 @@ func TestStringSliceMap(t *testing.T) {
 		t.Error("Failed Join.")
 	}
 
-	m.Remove("A")
+	m.Delete("A")
 
 	s = m.Join("-")
 
 	if s != "This-Other" {
-		t.Error("Remove Failed.")
+		t.Error("Delete Failed.")
 	}
 
 	if m.Len() != 2 {

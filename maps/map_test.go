@@ -23,7 +23,7 @@ func TestMap(t *testing.T) {
 		t.Errorf("Strings test failed. Expected  (%q) got (%q).", "Other", v)
 	}
 
-	m.Remove("A")
+	m.Delete("A")
 
 	if m.Len() != 2 {
 		t.Error("Len Failed.")
@@ -91,7 +91,7 @@ func TestEmpty(t *testing.T) {
         if o.Has("A") {
             t.Error("Empty Has failed")
         }
-        o.Remove("E")
+        o.Delete("E")
         o.Clear()
 
         if len(o.Values()) != 0 {
@@ -242,5 +242,28 @@ func ExampleMap_Equals() {
 	//Output: Equal
 }
 
+// Test the ability of the copy operation to do a deep copy if available
 
+type toCopy struct {
+    A int
+    b string
+}
+
+func (c *toCopy) Copy() interface{} {   // normally this would be a more descriptive interface
+    m := &toCopy{}
+    m.A = c.A
+    m.b = c.b
+    return m
+}
+
+func TestCopy(t *testing.T) {
+    var c = toCopy{2,"s"}
+    m := NewMap()
+    m.Set("this", &c)
+    n := m.Copy()
+    c.A = 5
+    if n.Get("this").(*toCopy).A != 2 {
+       t.Error(fmt.Sprintf("Simulated copy failed. A = %d", n.Get("this").(*toCopy).A ))
+    }
+}
 

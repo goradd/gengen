@@ -10,7 +10,7 @@ type MapI interface {
 	Set(key string, val interface{})
 	Get(key string) (val interface{})
 	Has(key string) (exists bool)
-	Remove(key string)
+	Delete(key string)
 	Values() []interface{}
 	Keys() []string
 	Len() int
@@ -19,4 +19,3 @@ type MapI interface {
 	Range(f func(key string, value interface{}) bool)
 	Merge(i MapI)
 }
-

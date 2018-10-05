@@ -1,35 +1,63 @@
 package {{.package}}
 
-// {{.KeyType}}{{.ValType}}Map maps a {{.keytype}} to a {{.valtype}}.
-// This version is not safe for concurrent use.
-// A zero value is ready for use
-type {{.KeyType}}{{.ValType}}Map struct {
+import (
+	"bytes"
+	"encoding/gob"
+	"encoding/json"
+{{- if .Safe}}
+	"sync"
+{{end}}
+{{if .imports}}
+    {{.imports}}
+{{end}}
+)
+
+// {{.Safe}}{{.KeyType}}{{.ValType}}Map maps a {{.keytype}} to a {{.valtype}}.
+// This version is {{if not .Safe -}} not {{- end}} safe for concurrent use.
+// A zero value is ready for use, but you may not copy it after first using it.
+type {{.Safe}}{{.KeyType}}{{.ValType}}Map struct {
+{{- if .Safe}}
+	sync.RWMutex{{end}}
     items map[{{.keytype}}]{{.valtype}}
 }
 
-// New{{.KeyType}}{{.ValType}}Map creates a new map that maps {{.keytype}}'s to {{.valtype}}'s.
-func New{{.KeyType}}{{.ValType}}Map() *{{.KeyType}}{{.ValType}}Map {
-	return new({{.KeyType}}{{.ValType}}Map)
+// New{{.Safe}}{{.KeyType}}{{.ValType}}Map creates a new map that maps {{.keytype}}'s to {{.valtype}}'s.
+func New{{.Safe}}{{.KeyType}}{{.ValType}}Map() *{{.Safe}}{{.KeyType}}{{.ValType}}Map {
+	return new({{.Safe}}{{.KeyType}}{{.ValType}}Map)
 }
 
-// New{{.KeyType}}{{.ValType}}MapFrom creates a new {{.KeyType}}{{.ValType}}Map from a
+// New{{.Safe}}{{.KeyType}}{{.ValType}}MapFrom creates a new {{.Safe}}{{.KeyType}}{{.ValType}}Map from a
 // {{.KeyType}}{{.ValType}}MapI interface object
-func New{{.KeyType}}{{.ValType}}MapFrom(i {{.KeyType}}{{.ValType}}MapI) *{{.KeyType}}{{.ValType}}Map {
-	m := New{{.KeyType}}{{.ValType}}Map()
+func New{{.Safe}}{{.KeyType}}{{.ValType}}MapFrom(i {{.KeyType}}{{.ValType}}MapI) *{{.Safe}}{{.KeyType}}{{.ValType}}Map {
+	m := New{{.Safe}}{{.KeyType}}{{.ValType}}Map()
 	m.Merge(i)
 	return m
 }
 
+// Clear resets the map to an empty map
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Clear() {
+    if o == nil {
+		return
+	}
+{{- if .Safe}}
+ 	o.Lock(){{end}}
+	o.items = nil
+{{- if .Safe}}
+    o.Unlock(){{end}}
+}
+
 // SetChanged sets the key to the value and returns a boolean indicating whether doing this caused
-// the map to change.
-func (o *{{.KeyType}}{{.ValType}}Map) SetChanged(key {{.keytype}}, val {{.valtype}}) (changed bool) {
+// the map to change. It will return true if the key did not first exist, or if the value associated
+// with the key was different than the new value.
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) SetChanged(key {{.keytype}}, val {{.valtype}}) (changed bool) {
 	var ok bool
 	var oldVal {{.valtype}}
 
 	if o == nil {
 		panic("The map must be created before being used.")
 	}
-
+{{- if .Safe}}
+ 	o.Lock(){{end}}
 	if o.items == nil {
 	    o.items = make(map[{{.keytype}}]{{.valtype}})
 	}
@@ -38,101 +66,144 @@ func (o *{{.KeyType}}{{.ValType}}Map) SetChanged(key {{.keytype}}, val {{.valtyp
 		o.items[key] = val
 		changed = true
 	}
+{{- if .Safe}}
+    o.Unlock(){{end}}
 	return
 }
 
-// Set will set the key to the value
-func (o *{{.KeyType}}{{.ValType}}Map) Set(key {{.keytype}}, val {{.valtype}}) {
+// Set sets the key to the given value
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Set(key {{.keytype}}, val {{.valtype}}) {
 	if o == nil {
 		panic("The map must be initialized before being used.")
 	}
-
+{{- if .Safe}}
+ 	o.Lock(){{end}}
     if o.items == nil {
         o.items = make(map[{{.keytype}}]{{.valtype}})
     }
 
 	o.items[key] = val
+{{- if .Safe}}
+    o.Unlock(){{end}}
 }
 
 // Get returns the string based on its key. If it does not exist, an empty {{.keytype}} will be returned.
-func (o *{{.KeyType}}{{.ValType}}Map) Get(key {{.keytype}}) (val {{.valtype}}) {
-    if o == nil || o.items == nil {
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Get(key {{.keytype}}) (val {{.valtype}}) {
+    if o == nil {
 		return
 	}
-	val,_ = o.items[key]
+{{- if .Safe}}
+    o.RLock(){{end}}
+	if o.items != nil {
+	    val,_ = o.items[key]
+	}
+{{- if .Safe}}
+    o.RUnlock(){{end}}
 	return
 }
 
-// Has returns true if the given key exists in the map
-func (o *{{.KeyType}}{{.ValType}}Map) Has(key {{.keytype}}) (exists bool) {
-    if o == nil || o.items == nil {
+// Delete removes the key from the map. If the key does not exist, nothing happens.
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Delete(key {{.keytype}}) {
+    if o == nil {
 		return
 	}
-	_, exists = o.items[key]
+{{- if .Safe}}
+ 	o.Lock(){{end}}
+ 	if o.items != nil {
+	    delete(o.items, key)
+	}
+{{- if .Safe}}
+    o.Unlock(){{end}}
+}
+
+
+// Has returns true if the given key exists in the map.
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Has(key {{.keytype}}) (exists bool) {
+    if o == nil {
+		return
+	}
+{{- if .Safe}}
+    o.RLock(){{end}}
+    if o.items != nil {
+ 	    _, exists = o.items[key]
+    }
+{{- if .Safe}}
+    o.RUnlock(){{end}}
 	return
 }
 
+// Values returns a slice of the values. It will return a nil slice if the map is empty.
+// Multiple calls to Values will result in the same list of values, but may be in a different order.
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Values() (vals []{{.valtype}}) {
+    if o == nil {
+        return
+    }
 
-// Remove deletes the given key from the map
-func (o *{{.KeyType}}{{.ValType}}Map) Remove(key {{.keytype}}) {
-    if o == nil || o.items == nil {
-		return
-	}
-	delete(o.items, key)
+{{- if .Safe}}
+    o.RLock(){{end}}
+    if len(o.items) > 0 {
+        vals = make([]{{.valtype}}, len(o.items))
+
+        var i int
+        for _, v := range o.items {
+            vals[i] = v
+            i++
+        }
+    }
+{{- if .Safe}}
+    o.RUnlock(){{end}}
+
+	return
 }
 
-// Clear resets the map to an empty map
-func (o *{{.KeyType}}{{.ValType}}Map) Clear() {
-
-    if o == nil || o.items == nil {
-		return
-	}
-	o.items = nil
-}
-
-// Values returns a slice of the values
-func (o *{{.KeyType}}{{.ValType}}Map) Values() []{{.valtype}} {
+// Keys returns a slice of the keys. It will return a nil slice if the map is empty.
+// Multiple calls to Keys will result in the same list of keys, but may be in a different order.
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Keys() (keys []{{.keytype}}) {
     if o == nil {
         return nil
     }
 
-	vals := make([]{{.valtype}}, 0, len(o.items))
+{{- if .Safe}}
+    o.RLock(){{end}}
+    if len(o.items) > 0 {
+        keys = make([]{{.keytype}}, len(o.items))
 
-    for _, v := range o.items {
-        vals = append(vals, v)
+        var i int
+        for k := range o.items {
+            keys[i] = k
+            i++
+        }
     }
-
-	return vals
-}
-
-// Keys returns a slice of the keys
-func (o *{{.KeyType}}{{.ValType}}Map) Keys() []{{.keytype}} {
-    if o == nil {
-        return nil
-    }
-
-	keys := make([]string, 0, len(o.items))
-
-    for k := range o.items {
-        keys = append(keys, k)
-    }
-	return keys
+{{- if .Safe}}
+    o.RUnlock(){{end}}
+	return
 }
 
 // Len returns the number of items in the map
-func (o *{{.KeyType}}{{.ValType}}Map) Len() int {
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Len() (l int) {
     if o == nil {
-		return 0
+		return
 	}
-	return len(o.items)
+{{- if .Safe}}
+    o.RLock(){{end}}
+    l = len(o.items)
+{{- if .Safe}}
+    o.RUnlock(){{end}}
+	return
 }
 
-// Range will call the given function with every key and value.
+// Range will call the given function with every key and value in the map.
 // If f returns false, it stops the iteration. This pattern is taken from sync.Map.
-func (o *{{.KeyType}}{{.ValType}}Map) Range(f func(key {{.keytype}}, value {{.valtype}}) bool) {
+{{- if .Safe}}
+// During this process, the map will be locked, so do not pass a function that will take significant amounts of time.{{end}}
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Range(f func(key {{.keytype}}, value {{.valtype}}) bool) {
 	if o == nil {
 		return
 	}
+{{- if .Safe}}
+	o.RLock()
+	defer o.RUnlock(){{end}}
+
 	for k, v := range o.items {
 		if !f(k, v) {
 			break
@@ -140,27 +211,42 @@ func (o *{{.KeyType}}{{.ValType}}Map) Range(f func(key {{.keytype}}, value {{.va
 	}
 }
 
-// Merge merges the given string map with the current one. The given one takes precedent on collisions.
-func (o *{{.KeyType}}{{.ValType}}Map) Merge(i {{.KeyType}}{{.ValType}}MapI) {
+// Merge merges the given  map with the current one. The given one takes precedent on collisions.
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Merge(i {{.KeyType}}{{.ValType}}MapI) {
+	if i == nil {
+		return
+	}
+
 	if o == nil {
 		panic("The map must be created before being used.")
 	}
 
+{{- if .Safe}}
+	o.Lock()
+	defer o.Unlock(){{end}}
+
 	if o.items == nil {
-	    o.items = make(map[{{.keytype}}]{{.valtype}})
+	    o.items = make(map[{{.keytype}}]{{.valtype}}, i.Len())
 	}
 	i.Range(func(k {{.keytype}}, v {{.valtype}}) bool {
-		o.items[k] = i.Get(k)
+		o.items[k] = v
 		return true
 	})
 }
 
 // Equals returns true if all the keys in the given map exist in this map, and the values are the same
-func (o *{{.KeyType}}{{.ValType}}Map) Equals(i {{.KeyType}}{{.ValType}}MapI) bool {
-	if i.Len() != o.Len() {
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Equals(i {{.KeyType}}{{.ValType}}MapI) bool {
+    len := o.Len()
+	if i.Len() != len {
 		return false
+	} else if len == 0 { // both are zero
+	    return true
 	}
 	var ret = true
+
+{{- if .Safe}}
+    o.RLock()
+    defer o.RUnlock(){{end}}
 
 	i.Range(func(k {{.keytype}}, v {{.valtype}}) bool {
 		if v2,ok := o.items[k]; !ok || v2 != v {
@@ -173,9 +259,87 @@ func (o *{{.KeyType}}{{.ValType}}Map) Equals(i {{.KeyType}}{{.ValType}}MapI) boo
 	return ret
 }
 
-func (o *{{.KeyType}}{{.ValType}}Map) Copy() *{{.KeyType}}{{.ValType}}Map {
-	m := New{{.KeyType}}{{.ValType}}Map()
-	m.Merge(o)
-	return m
+// Copy will make a copy of the map and a copy of the underlying data.
+{{- if not .valueIsCopyable}}{{if .valueIsInterface}}
+// If the values implement the {{.ValType}}Copier interface, the value's Copy function will be called to deep copy the items.{{end}}{{end}}
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Copy() {{.KeyType}}{{.ValType}}MapI {
+	cp := New{{.Safe}}{{.KeyType}}{{.ValType}}Map()
+
+	o.Range(func(key {{.keytype}}, value {{.valtype}}) bool {
+{{if .valueIsCopyable}}
+        value = value.Copy()
+{{else if .valueIsInterface}}
+		if copier, ok := value.({{.ValType}}Copier); ok {
+			value = copier.Copy()
+		}
+{{end}}
+
+{{if .keyIsCopyable}}
+        key = key.Copy()
+{{else if .keyIsInterface}}
+		if copier, ok := key.({{.KeyType}}Copier); ok {
+			key = copier.Copy()
+		}
+{{end}}
+
+		cp.Set(key, value)
+		return true
+	})
+	return cp
 }
 
+// MarshalBinary implements the BinaryMarshaler interface to convert the map to a byte stream.
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) MarshalBinary() ([]byte, error) {
+	var b bytes.Buffer
+
+ 	enc := gob.NewEncoder(&b)
+{{- if .Safe}}
+    o.RLock()
+    defer o.RUnlock(){{end}}
+	err := enc.Encode(o.items)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements the BinaryUnmarshaler interface to convert a byte stream to a
+// {{.Safe}}{{.KeyType}}{{.ValType}}Map
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) UnmarshalBinary(data []byte) (err error) {
+    var v map[{{.keytype}}]{{.valtype}}
+
+	b := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(b)
+	if err = dec.Decode(&v); err == nil {
+ {{- if .Safe}}
+        o.Lock(){{end}}
+        o.items = v
+ {{- if .Safe}}
+        o.Unlock(){{end}}
+	}
+	return err
+}
+
+// MarshalJSON implements the json.Marshaler interface to convert the map into a JSON object.
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) MarshalJSON() (out []byte, err error) {
+{{- if .Safe}}
+    o.RLock()
+    defer o.RUnlock(){{end}}
+    out,err = json.Marshal(o.items)
+    return
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface to convert a json object to a {{.Safe}}{{.KeyType}}{{.ValType}}Map.
+// The JSON must start with an object.
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) UnmarshalJSON(in []byte) (err error) {
+    var v map[{{.keytype}}]{{.valtype}}
+    if err = json.Unmarshal(in, &v); err == nil {
+ {{- if .Safe}}
+        o.Lock(){{end}}
+        o.items = v
+ {{- if .Safe}}
+        o.Unlock(){{end}}
+    }
+    return
+}
+
+func init() {
+	gob.Register(new ({{.Safe}}{{.KeyType}}{{.ValType}}Map))
+}

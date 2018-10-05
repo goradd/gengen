@@ -4,9 +4,12 @@ package map_src
 // in this directory. You can use this as an example of how to use GoT to build your own custom
 // versions of the maps here.
 
+//go:generate gengen -c string_i.json  -o ../maps/strmapi2.go mapi2.tmpl
+//go:generate gengen -c interface_i.json  -o ../maps/mapi2.go mapi2.tmpl
+
 //go:generate gengen -c string_string.json  -o ../maps/strmapi.go mapi.tmpl
 //go:generate gengen -c string_string.json  -o ../maps/strmap.go standard_map.tmpl
-//go:generate gengen -c string_string.json  -o ../maps/safestrmap.go safe_map.tmpl
+//go:generate gengen -c safe_string_string.json  -o ../maps/safestrmap.go standard_map.tmpl
 //go:generate gengen -c string_string.json  -o ../maps/strslicemap.go slice_map.tmpl
 //go:generate gengen -c string_string.json  -o ../maps/safestrslicemap.go safe_slice_map.tmpl
 
@@ -17,5 +20,9 @@ package map_src
 
 //go:generate gengen -c string_interface.json  -o ../maps/mapi.go mapi.tmpl
 //go:generate gengen -c string_interface.json  -o ../maps/map.go standard_map.tmpl
+//go:generate gengen -c safe_string_interface.json  -o ../maps/safemap.go standard_map.tmpl
+//go:generate gengen -c string_interface.json  -o ../maps/slicemap.go slice_map.tmpl
+//go:generate gengen -c string_interface.json  -o ../maps/safeslicemap.go safe_slice_map.tmpl
 
 //go:generate gengen -c standard_test.json  -o ../maps/map_test.go string_interface_test.tmpl
+//go:generate gengen -c safe_test.json  -o ../maps/safemap_test.go string_interface_test.tmpl

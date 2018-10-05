@@ -8,5 +8,5 @@ KeyType is blank since a string key is the default for these maps, and makes it 
   "ValType": "String",
   "keytype": "string",
   "valtype": "string",
-  "Safe": ""
+  "Safe": "Safe"
 }

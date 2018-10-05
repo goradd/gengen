@@ -4,47 +4,53 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
+	"sync"
+
 
 )
 
-// Map maps a string to a interface{}.
-// This version is not safe for concurrent use.
+// SafeMap maps a string to a interface{}.
+// This version is  safe for concurrent use.
 // A zero value is ready for use, but you may not copy it after first using it.
-type Map struct {
+type SafeMap struct {
+	sync.RWMutex
     items map[string]interface{}
 }
 
-// NewMap creates a new map that maps string's to interface{}'s.
-func NewMap() *Map {
-	return new(Map)
+// NewSafeMap creates a new map that maps string's to interface{}'s.
+func NewSafeMap() *SafeMap {
+	return new(SafeMap)
 }
 
-// NewMapFrom creates a new Map from a
+// NewSafeMapFrom creates a new SafeMap from a
 // MapI interface object
-func NewMapFrom(i MapI) *Map {
-	m := NewMap()
+func NewSafeMapFrom(i MapI) *SafeMap {
+	m := NewSafeMap()
 	m.Merge(i)
 	return m
 }
 
 // Clear resets the map to an empty map
-func (o *Map) Clear() {
+func (o *SafeMap) Clear() {
     if o == nil {
 		return
 	}
+ 	o.Lock()
 	o.items = nil
+    o.Unlock()
 }
 
 // SetChanged sets the key to the value and returns a boolean indicating whether doing this caused
 // the map to change. It will return true if the key did not first exist, or if the value associated
 // with the key was different than the new value.
-func (o *Map) SetChanged(key string, val interface{}) (changed bool) {
+func (o *SafeMap) SetChanged(key string, val interface{}) (changed bool) {
 	var ok bool
 	var oldVal interface{}
 
 	if o == nil {
 		panic("The map must be created before being used.")
 	}
+ 	o.Lock()
 	if o.items == nil {
 	    o.items = make(map[string]interface{})
 	}
@@ -53,60 +59,70 @@ func (o *Map) SetChanged(key string, val interface{}) (changed bool) {
 		o.items[key] = val
 		changed = true
 	}
+    o.Unlock()
 	return
 }
 
 // Set sets the key to the given value
-func (o *Map) Set(key string, val interface{}) {
+func (o *SafeMap) Set(key string, val interface{}) {
 	if o == nil {
 		panic("The map must be initialized before being used.")
 	}
+ 	o.Lock()
     if o.items == nil {
         o.items = make(map[string]interface{})
     }
 
 	o.items[key] = val
+    o.Unlock()
 }
 
 // Get returns the string based on its key. If it does not exist, an empty string will be returned.
-func (o *Map) Get(key string) (val interface{}) {
+func (o *SafeMap) Get(key string) (val interface{}) {
     if o == nil {
 		return
 	}
+    o.RLock()
 	if o.items != nil {
 	    val,_ = o.items[key]
 	}
+    o.RUnlock()
 	return
 }
 
 // Delete removes the key from the map. If the key does not exist, nothing happens.
-func (o *Map) Delete(key string) {
+func (o *SafeMap) Delete(key string) {
     if o == nil {
 		return
 	}
+ 	o.Lock()
  	if o.items != nil {
 	    delete(o.items, key)
 	}
+    o.Unlock()
 }
 
 
 // Has returns true if the given key exists in the map.
-func (o *Map) Has(key string) (exists bool) {
+func (o *SafeMap) Has(key string) (exists bool) {
     if o == nil {
 		return
 	}
+    o.RLock()
     if o.items != nil {
  	    _, exists = o.items[key]
     }
+    o.RUnlock()
 	return
 }
 
 // Values returns a slice of the values. It will return a nil slice if the map is empty.
 // Multiple calls to Values will result in the same list of values, but may be in a different order.
-func (o *Map) Values() (vals []interface{}) {
+func (o *SafeMap) Values() (vals []interface{}) {
     if o == nil {
         return
     }
+    o.RLock()
     if len(o.items) > 0 {
         vals = make([]interface{}, len(o.items))
 
@@ -116,16 +132,18 @@ func (o *Map) Values() (vals []interface{}) {
             i++
         }
     }
+    o.RUnlock()
 
 	return
 }
 
 // Keys returns a slice of the keys. It will return a nil slice if the map is empty.
 // Multiple calls to Keys will result in the same list of keys, but may be in a different order.
-func (o *Map) Keys() (keys []string) {
+func (o *SafeMap) Keys() (keys []string) {
     if o == nil {
         return nil
     }
+    o.RLock()
     if len(o.items) > 0 {
         keys = make([]string, len(o.items))
 
@@ -135,24 +153,30 @@ func (o *Map) Keys() (keys []string) {
             i++
         }
     }
+    o.RUnlock()
 	return
 }
 
 // Len returns the number of items in the map
-func (o *Map) Len() (l int) {
+func (o *SafeMap) Len() (l int) {
     if o == nil {
 		return
 	}
+    o.RLock()
     l = len(o.items)
+    o.RUnlock()
 	return
 }
 
 // Range will call the given function with every key and value in the map.
 // If f returns false, it stops the iteration. This pattern is taken from sync.Map.
-func (o *Map) Range(f func(key string, value interface{}) bool) {
+// During this process, the map will be locked, so do not pass a function that will take significant amounts of time.
+func (o *SafeMap) Range(f func(key string, value interface{}) bool) {
 	if o == nil {
 		return
 	}
+	o.RLock()
+	defer o.RUnlock()
 
 	for k, v := range o.items {
 		if !f(k, v) {
@@ -162,7 +186,7 @@ func (o *Map) Range(f func(key string, value interface{}) bool) {
 }
 
 // Merge merges the given  map with the current one. The given one takes precedent on collisions.
-func (o *Map) Merge(i MapI) {
+func (o *SafeMap) Merge(i MapI) {
 	if i == nil {
 		return
 	}
@@ -170,6 +194,8 @@ func (o *Map) Merge(i MapI) {
 	if o == nil {
 		panic("The map must be created before being used.")
 	}
+	o.Lock()
+	defer o.Unlock()
 
 	if o.items == nil {
 	    o.items = make(map[string]interface{}, i.Len())
@@ -181,7 +207,7 @@ func (o *Map) Merge(i MapI) {
 }
 
 // Equals returns true if all the keys in the given map exist in this map, and the values are the same
-func (o *Map) Equals(i MapI) bool {
+func (o *SafeMap) Equals(i MapI) bool {
     len := o.Len()
 	if i.Len() != len {
 		return false
@@ -189,6 +215,8 @@ func (o *Map) Equals(i MapI) bool {
 	    return true
 	}
 	var ret = true
+    o.RLock()
+    defer o.RUnlock()
 
 	i.Range(func(k string, v interface{}) bool {
 		if v2,ok := o.items[k]; !ok || v2 != v {
@@ -203,8 +231,8 @@ func (o *Map) Equals(i MapI) bool {
 
 // Copy will make a copy of the map and a copy of the underlying data.
 // If the values implement the Copier interface, the value's Copy function will be called to deep copy the items.
-func (o *Map) Copy() MapI {
-	cp := NewMap()
+func (o *SafeMap) Copy() MapI {
+	cp := NewSafeMap()
 
 	o.Range(func(key string, value interface{}) bool {
 
@@ -222,43 +250,51 @@ func (o *Map) Copy() MapI {
 }
 
 // MarshalBinary implements the BinaryMarshaler interface to convert the map to a byte stream.
-func (o *Map) MarshalBinary() ([]byte, error) {
+func (o *SafeMap) MarshalBinary() ([]byte, error) {
 	var b bytes.Buffer
 
  	enc := gob.NewEncoder(&b)
+    o.RLock()
+    defer o.RUnlock()
 	err := enc.Encode(o.items)
 	return b.Bytes(), err
 }
 
 // UnmarshalBinary implements the BinaryUnmarshaler interface to convert a byte stream to a
-// Map
-func (o *Map) UnmarshalBinary(data []byte) (err error) {
+// SafeMap
+func (o *SafeMap) UnmarshalBinary(data []byte) (err error) {
     var v map[string]interface{}
 
 	b := bytes.NewBuffer(data)
 	dec := gob.NewDecoder(b)
 	if err = dec.Decode(&v); err == nil {
+        o.Lock()
         o.items = v
+        o.Unlock()
 	}
 	return err
 }
 
 // MarshalJSON implements the json.Marshaler interface to convert the map into a JSON object.
-func (o *Map) MarshalJSON() (out []byte, err error) {
+func (o *SafeMap) MarshalJSON() (out []byte, err error) {
+    o.RLock()
+    defer o.RUnlock()
     out,err = json.Marshal(o.items)
     return
 }
 
-// UnmarshalJSON implements the json.Unmarshaler interface to convert a json object to a Map.
+// UnmarshalJSON implements the json.Unmarshaler interface to convert a json object to a SafeMap.
 // The JSON must start with an object.
-func (o *Map) UnmarshalJSON(in []byte) (err error) {
+func (o *SafeMap) UnmarshalJSON(in []byte) (err error) {
     var v map[string]interface{}
     if err = json.Unmarshal(in, &v); err == nil {
+        o.Lock()
         o.items = v
+        o.Unlock()
     }
     return
 }
 
 func init() {
-	gob.Register(new (Map))
+	gob.Register(new (SafeMap))
 }
