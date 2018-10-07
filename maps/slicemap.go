@@ -235,17 +235,13 @@ func (r sortbykeys) Less(i, j int) bool {
 
 // Copy will make a copy of the map and a copy of the underlying data.
 // If the values implement the Copier interface, the value's Copy function will be called to deep copy the items.
-func (o *SliceMap) Copy() MapI {
+func (o *SliceMap) Copy() *SliceMap {
 	cp := NewSliceMap()
 
 	o.Range(func(key string, value interface{}) bool {
-
 		if copier, ok := value.(Copier); ok {
 			value = copier.Copy()
 		}
-
-
-
 
 		cp.Set(key, value)
 		return true

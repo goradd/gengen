@@ -340,6 +340,11 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) UnmarshalJSON(in []byte) (err err
     return
 }
 
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) IsNil() bool {
+	return o == nil
+}
+
+
 func init() {
 	gob.Register(new ({{.Safe}}{{.KeyType}}{{.ValType}}Map))
 }

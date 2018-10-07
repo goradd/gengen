@@ -184,3 +184,61 @@ func Example{{.MapType}}StringMap_Equals() {
 	}
 	//Output: Equal
 }
+
+func Test{{.MapType}}StringMapEmpty(t *testing.T) {
+    var m *{{.MapType}}StringMap
+    var n = new({{.MapType}}StringMap)
+
+    if !m.IsNil() {
+        t.Error("Empty Nil test failed")
+    }
+
+    if n.IsNil() {
+        t.Error("Empty Nil test failed")
+    }
+
+    for _, o := range ([]*{{.MapType}}StringMap{m, n}) {
+        i := o.Get("A")
+        if i != "" {
+            t.Error("Empty Get failed")
+        }
+        if o.Has("A") {
+            t.Error("Empty Has failed")
+        }
+        o.Delete("E")
+        o.Clear()
+
+        if len(o.Values()) != 0 {
+            t.Error("Empty Values() failed")
+        }
+
+        if len(o.Keys()) != 0 {
+            t.Error("Empty Keys() failed")
+        }
+
+        var j int
+        o.Range(func (k string, v string) bool {
+            j = 1
+            return false
+        })
+        if j == 1 {
+            t.Error("Empty Range failed")
+        }
+
+        o.Merge(nil)
+
+    }
+
+    if !m.Equals(n) {
+        t.Error("Empty Equals() failed")
+    }
+    n.Set("a","b")
+    if m.Equals(n) {
+       t.Error("Empty Equals() failed")
+    }
+    if n.Equals(m) {
+       t.Error("Empty Equals() failed")
+    }
+
+
+}

@@ -308,25 +308,23 @@ func (r sort{{.Safe}}{{.KeyType}}{{.ValType}}bykeys) Less(i, j int) bool {
 // Copy will make a copy of the map and a copy of the underlying data.
 {{- if not .valueIsCopyable}}{{if .valueIsInterface}}
 // If the values implement the {{.ValType}}Copier interface, the value's Copy function will be called to deep copy the items.{{end}}{{end}}
-func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Copy() {{.KeyType}}{{.ValType}}MapI {
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Copy() *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap {
 	cp := New{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap()
 
 	o.Range(func(key {{.keytype}}, value {{.valtype}}) bool {
-{{if .valueIsCopyable}}
+{{- if .valueIsCopyable}}
         value = value.Copy()
-{{else if .valueIsInterface}}
+{{- else if .valueIsInterface}}
 		if copier, ok := value.({{.ValType}}Copier); ok {
 			value = copier.Copy()
-		}
-{{end}}
+		}{{end}}
 
-{{if .keyIsCopyable}}
+{{- if .keyIsCopyable}}
         key = key.Copy()
-{{else if .keyIsInterface}}
+{{- else if .keyIsInterface}}
 		if copier, ok := key.({{.KeyType}}Copier); ok {
 			key = copier.Copy()
-		}
-{{end}}
+		}{{end}}
 
 		cp.Set(key, value)
 		return true

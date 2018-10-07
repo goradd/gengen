@@ -295,6 +295,11 @@ func (o *SafeMap) UnmarshalJSON(in []byte) (err error) {
     return
 }
 
+func (o *SafeMap) IsNil() bool {
+	return o == nil
+}
+
+
 func init() {
 	gob.Register(new (SafeMap))
 }

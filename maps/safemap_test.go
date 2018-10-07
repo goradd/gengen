@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"bytes"
+	"encoding/gob"
+    "encoding/json"
+    "os"
 )
 
 func TestSafeMap(t *testing.T) {
@@ -101,6 +105,18 @@ func TestSafeEmpty(t *testing.T) {
         if len(o.Keys()) != 0 {
             t.Error("Empty Keys() failed")
         }
+
+        var j int
+        o.Range(func (k string, v interface{}) bool {
+            j = 1
+            return false
+        })
+        if j == 1 {
+            t.Error("Empty Range failed")
+        }
+
+        o.Merge(nil)
+
     }
 
     if !m.Equals(n) {
@@ -153,7 +169,7 @@ func ExampleSafeMap_Set() {
 	m := NewSafeMap()
 	m.Set("a", "Here")
 	fmt.Println(m.Get("a"))
-	// Output Here
+	// Output: Here
 }
 
 func ExampleSafeMap_Values() {
@@ -267,3 +283,52 @@ func TestSafeCopy(t *testing.T) {
     }
 }
 
+func ExampleSafeMap_MarshalBinary() {
+	// You would rarely call MarshallBinary directly, but rather would use an encoder, like GOB for binary encoding
+
+	m := new (SafeMap)
+	var m2 SafeMap
+
+	m.Set("B", "This")
+	m.Set("A", "That")
+	m.Set("C", 3)
+
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf) // Will write
+	dec := gob.NewDecoder(&buf) // Will read
+
+	enc.Encode(m)
+	dec.Decode(&m2)
+	s := m2.Get("A")
+	fmt.Println(s)
+	s = m2.Get("C")
+	fmt.Println(s)
+	// Output: That
+	// 3
+}
+
+func ExampleSafeMap_MarshalJSON() {
+	// You don't normally call MarshallJSON directly, but rather use the Marshall and Unmarshall json commands
+	m := new (SafeMap)
+
+	m.Set("B", "This")
+	m.Set("A", "That")
+	m.Set("C", 3)
+
+	s, _ := json.Marshal(m)
+
+	// Note: The below output is what is produced, but isn't guaranteed. go seems to currently be sorting keys
+	os.Stdout.Write(s)
+	// Output: {"A":"That","B":"This","C":3}
+}
+
+func ExampleSafeMap_UnmarshalJSON() {
+	b := []byte(`{"A":"That","B":"This","C":3}`)
+	var m SafeMap
+
+	json.Unmarshal(b, &m)
+
+	fmt.Println(m.Get("C"))
+
+	// Output: 3
+}

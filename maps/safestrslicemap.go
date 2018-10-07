@@ -252,13 +252,10 @@ func (r sortSafeStringbykeys) Less(i, j int) bool {
 }
 
 // Copy will make a copy of the map and a copy of the underlying data.
-func (o *SafeStringSliceMap) Copy() StringMapI {
+func (o *SafeStringSliceMap) Copy() *SafeStringSliceMap {
 	cp := NewSafeStringSliceMap()
 
 	o.Range(func(key string, value string) bool {
-
-
-
 
 		cp.Set(key, value)
 		return true

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"sort"
 )
 
 func TestSafeSliceMap(t *testing.T) {
@@ -61,6 +62,12 @@ func TestSafeSliceMap(t *testing.T) {
 	if m.Get("F") != 9 {
 		t.Error("Add non-string value failed.")
 	}
+
+	n := m.Copy()
+    if n.Get("F") != 9 {
+        t.Error("Copy failed.")
+    }
+
 }
 
 func TestSafeSliceMapChange(t *testing.T) {
@@ -93,7 +100,17 @@ func ExampleSafeSliceMap_Range() {
 	})
 	fmt.Println()
 
+
+	// Iterate after sorting keys
+	sort.Sort(OrderSafeSliceMapByKeys(m))
+	m.Range(func(key string, val interface{}) bool {
+		fmt.Printf("%s:%s,", key, val)
+		return true // keep iterating to the end
+	})
+	fmt.Println()
+
 	// Output: B:This,A:That,C:Other,
+	// A:That,B:This,C:Other,
 }
 
 func ExampleSafeSliceMap_MarshalBinary() {
@@ -129,9 +146,9 @@ func ExampleSafeSliceMap_MarshalJSON() {
 	m.Set("C", "Other")
 
 	s, _ := json.Marshal(m)
-	os.Stdout.Write(s)
 
 	// Note: The below output is what is produced, but isn't guaranteed. go seems to currently be sorting keys
+	os.Stdout.Write(s)
 	// Output: {"A":"That","B":"This","C":"Other"}
 }
 
@@ -140,10 +157,10 @@ func ExampleSafeSliceMap_UnmarshalJSON() {
 	var m SafeSliceMap
 
 	json.Unmarshal(b, &m)
+	sort.Sort(OrderSafeSliceMapByKeys(&m))
+	fmt.Println(&m)
 
-	fmt.Println(m.Get("B"))
-
-	// Output: This
+	// Output: {"A":"That","B":"This","C":"Other"}
 }
 
 func ExampleSafeSliceMap_Merge() {
@@ -244,4 +261,70 @@ func TestSafeSliceMap_SetAt(t *testing.T) {
     if "G" != m.GetAt(1) {
         t.Errorf("Beginning insert failed. Expected G and got %s", m.GetAt(1))
     }
+}
+
+
+func TestSafeSliceMapEmpty(t *testing.T) {
+    var m *SafeSliceMap
+    var n = new(SafeSliceMap)
+
+    if !m.IsNil() {
+        t.Error("Empty Nil test failed")
+    }
+
+    if n.IsNil() {
+        t.Error("Empty Nil test failed")
+    }
+
+
+    for _, o := range ([]*SafeSliceMap{m, n}) {
+        i := o.Get("A")
+        if i != nil {
+            t.Error("Empty Get failed")
+        }
+
+        i = o.GetAt(5)
+        if i != nil {
+            t.Error("Empty GetAt failed")
+        }
+
+        if o.Has("A") {
+            t.Error("Empty Has failed")
+        }
+        o.Delete("E")
+        o.Clear()
+
+        if len(o.Values()) != 0 {
+            t.Error("Empty Values() failed")
+        }
+
+        if len(o.Keys()) != 0 {
+            t.Error("Empty Keys() failed")
+        }
+
+        var j int
+        o.Range(func (k string, v interface{}) bool {
+            j = 1
+            return false
+        })
+        if j == 1 {
+            t.Error("Empty Range failed")
+        }
+
+        o.Merge(nil)
+
+    }
+
+    if !m.Equals(n) {
+        t.Error("Empty Equals() failed")
+    }
+    n.Set("a","b")
+    if m.Equals(n) {
+       t.Error("Empty Equals() failed")
+    }
+    if n.Equals(m) {
+       t.Error("Empty Equals() failed")
+    }
+
+
 }
