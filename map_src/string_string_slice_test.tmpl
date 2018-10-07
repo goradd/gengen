@@ -12,7 +12,6 @@ import (
 
 func Test{{.MapType}}StringSliceMap(t *testing.T) {
 	var s string
-	var ok bool
 
 	m := new ({{.MapType}}StringSliceMap)
 
@@ -32,7 +31,7 @@ func Test{{.MapType}}StringSliceMap(t *testing.T) {
 		t.Errorf("GetAt test failed. Expected  (%q) got (%q).", "Other", s)
 	}
 
-	if s = m.GetAt(3); ok {
+	if s = m.GetAt(3); s != "" {
 		t.Errorf("GetAt test failed. Expected no response, got %q", s)
 	}
 

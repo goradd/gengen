@@ -6,18 +6,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sort"
 	"testing"
 )
 
-func TestStringSliceMap(t *testing.T) {
+func TestSafeSliceMap(t *testing.T) {
 	var s string
 
-	m := new (StringSliceMap)
+	m := new (SafeSliceMap)
 
 	m.Set("B", "This")
 	m.Set("A", "That")
-	m.Set("C", "Other")
+	m.Set("C", 1)
 
 	if m.Values()[1] != "That" {
 		t.Errorf("Strings test failed. Expected  (%q) got (%q).", "That", m.Values()[1])
@@ -27,27 +26,15 @@ func TestStringSliceMap(t *testing.T) {
 		t.Errorf("Keys test failed. Expected  (%q) got (%q).", "A", m.Keys()[1])
 	}
 
-	if s = m.GetAt(2); s != "Other" {
-		t.Errorf("GetAt test failed. Expected  (%q) got (%q).", "Other", s)
+	if i := m.GetAt(2); i != 1 {
+		t.Errorf("GetAt test failed. Expected  (%q) got (%q).", 1, s)
 	}
 
-	if s = m.GetAt(3); s != "" {
+	if m.GetAt(3) != nil {
 		t.Errorf("GetAt test failed. Expected no response, got %q", s)
 	}
 
-	s = m.Join("+")
-
-	if s != "This+That+Other" {
-		t.Error("Failed Join.")
-	}
-
 	m.Delete("A")
-
-	s = m.Join("-")
-
-	if s != "This-Other" {
-		t.Error("Delete Failed.")
-	}
 
 	if m.Len() != 2 {
 		t.Error("Len Failed.")
@@ -62,28 +49,22 @@ func TestStringSliceMap(t *testing.T) {
 		t.Error("Get failed")
 	}
 
-	// Test that it satisfies the StringMapI interface
-	var i StringMapI = m
-	if s = i.Get("B"); s != "This" {
-		t.Error("StringMapI interface test failed.")
+	// Test that it satisfies the MapI interface
+	var i MapI = m
+	if i := i.Get("B"); i != "This" {
+		t.Error("MapI interface test failed.")
 	}
 
-	// Test that it satisfies the Sort interface
-	sort.Sort(m)
-	if s = m.GetAt(0); s != "Other" {
-		t.Error("Sort interface test failed.")
-	}
-
-	if changed := m.SetChanged("F", "9"); !changed {
+	if changed := m.SetChanged("F", 9); !changed {
 		t.Error("Add non-string value failed.")
 	}
-	if m.Get("F") != "9" {
+	if m.Get("F") != 9 {
 		t.Error("Add non-string value failed.")
 	}
 }
 
-func TestStringSliceMapChange(t *testing.T) {
-	m := new (StringSliceMap)
+func TestSafeSliceMapChange(t *testing.T) {
+	m := new (SafeSliceMap)
 
 	m.Set("B", "This")
 	m.Set("A", "That")
@@ -98,46 +79,28 @@ func TestStringSliceMapChange(t *testing.T) {
 	}
 }
 
-func ExampleStringSliceMap_Range() {
-	m := new (StringSliceMap)
+func ExampleSafeSliceMap_Range() {
+	m := new (SafeSliceMap)
 
 	m.Set("B", "This")
 	m.Set("A", "That")
 	m.Set("C", "Other")
 
 	// Iterate by insertion order
-	m.Range(func(key string, val string) bool {
-		fmt.Printf("%s:%s,", key, val)
-		return true // keep iterating to the end
-	})
-	fmt.Println()
-
-	// Iterate after sorting values
-	sort.Sort(m)
-	m.Range(func(key string, val string) bool {
-		fmt.Printf("%s:%s,", key, val)
-		return true // keep iterating to the end
-	})
-	fmt.Println()
-
-	// Iterate after sorting keys
-	sort.Sort(OrderStringSliceMapByKeys(m))
-	m.Range(func(key string, val string) bool {
+	m.Range(func(key string, val interface{}) bool {
 		fmt.Printf("%s:%s,", key, val)
 		return true // keep iterating to the end
 	})
 	fmt.Println()
 
 	// Output: B:This,A:That,C:Other,
-	// C:Other,A:That,B:This,
-	// A:That,B:This,C:Other,
 }
 
-func ExampleStringSliceMap_MarshalBinary() {
+func ExampleSafeSliceMap_MarshalBinary() {
 	// You would rarely call MarshallBinary directly, but rather would use an encoder, like GOB for binary encoding
 
-	m := new (StringSliceMap)
-	var m2 StringSliceMap
+	m := new (SafeSliceMap)
+	var m2 SafeSliceMap
 
 	m.Set("B", "This")
 	m.Set("A", "That")
@@ -157,9 +120,9 @@ func ExampleStringSliceMap_MarshalBinary() {
 	// Other
 }
 
-func ExampleStringSliceMap_MarshalJSON() {
+func ExampleSafeSliceMap_MarshalJSON() {
 	// You don't normally call MarshallJSON directly, but rather use the Marshall and Unmarshall json commands
-	m := new (StringSliceMap)
+	m := new (SafeSliceMap)
 
 	m.Set("B", "This")
 	m.Set("A", "That")
@@ -172,26 +135,25 @@ func ExampleStringSliceMap_MarshalJSON() {
 	// Output: {"A":"That","B":"This","C":"Other"}
 }
 
-func ExampleStringSliceMap_UnmarshalJSON() {
+func ExampleSafeSliceMap_UnmarshalJSON() {
 	b := []byte(`{"A":"That","B":"This","C":"Other"}`)
-	var m StringSliceMap
+	var m SafeSliceMap
 
 	json.Unmarshal(b, &m)
-	sort.Sort(OrderStringSliceMapByKeys(&m))
 
-	fmt.Println(&m)
+	fmt.Println(m.Get("B"))
 
-	// Output: {"A":"That","B":"This","C":"Other"}
+	// Output: This
 }
 
-func ExampleStringSliceMap_Merge() {
-	m := new (StringSliceMap)
+func ExampleSafeSliceMap_Merge() {
+	m := new (SafeSliceMap)
 
 	m.Set("B", "This")
 	m.Set("A", "That")
 	m.Set("C", "Other")
 
-    n := new (StringMap)
+    n := new (Map)
     n.Set("D", "Last")
 	m.Merge(n)
 
@@ -199,8 +161,8 @@ func ExampleStringSliceMap_Merge() {
 	//Output: Last
 }
 
-func ExampleStringSliceMap_Values() {
-	m := new (StringSliceMap)
+func ExampleSafeSliceMap_Values() {
+	m := new (SafeSliceMap)
 	m.Set("B", "This")
 	m.Set("A", "That")
 	m.Set("C", "Other")
@@ -210,8 +172,8 @@ func ExampleStringSliceMap_Values() {
 	//Output: [This That Other]
 }
 
-func ExampleStringSliceMap_Keys() {
-	m := new (StringSliceMap)
+func ExampleSafeSliceMap_Keys() {
+	m := new (SafeSliceMap)
 	m.Set("B", "This")
 	m.Set("A", "That")
 	m.Set("C", "Other")
@@ -221,20 +183,20 @@ func ExampleStringSliceMap_Keys() {
 	//Output: [B A C]
 }
 
-func ExampleNewStringSliceMapFrom() {
-    n := new (StringMap)
+func ExampleNewSafeSliceMapFrom() {
+    n := new (Map)
     n.Set("a", "this")
     n.Set("b", "that")
-	m := NewStringSliceMapFrom(n)
+	m := NewSafeSliceMapFrom(n)
 	fmt.Println(m.Get("b"))
 	//Output: that
 }
 
-func ExampleStringSliceMap_Equals() {
-    n := new (StringMap)
+func ExampleSafeSliceMap_Equals() {
+    n := new (Map)
     n.Set("A", "This")
     n.Set("B", "That")
-	m := NewStringSliceMapFrom(n)
+	m := NewSafeSliceMapFrom(n)
 	if m.Equals(n) {
 		fmt.Print("Equal")
 	} else {
@@ -243,8 +205,8 @@ func ExampleStringSliceMap_Equals() {
 	//Output: Equal
 }
 
-func TestStringSliceMap_SetAt(t *testing.T) {
-	m := NewStringSliceMap()
+func TestSafeSliceMap_SetAt(t *testing.T) {
+	m := NewSafeSliceMap()
 
 	m.Set("a", "A")
 	m.Set("b", "B")
