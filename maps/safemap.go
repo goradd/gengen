@@ -77,18 +77,64 @@ func (o *SafeMap) Set(key string, val interface{}) {
     o.Unlock()
 }
 
-// Get returns the string based on its key. If it does not exist, an empty string will be returned.
+// Get returns the value based on its key. If it does not exist, an empty string will be returned.
 func (o *SafeMap) Get(key string) (val interface{}) {
+    val,_ = o.Load(key)
+	return
+}
+
+// Load returns the value based on its key, and a boolean indicating whether it exists in the map.
+// This is the same interface as sync.Map.Load()
+func (o *SafeMap) Load(key string) (val interface{}, ok bool) {
     if o == nil {
 		return
 	}
     o.RLock()
 	if o.items != nil {
-	    val,_ = o.items[key]
+	    val,ok = o.items[key]
 	}
     o.RUnlock()
 	return
 }
+
+
+func (o *SafeMap) LoadString(key string) (val string, ok bool) {
+    var v interface{}
+    v,ok = o.Load(key)
+    if ok {
+        val,ok = v.(string)
+    }
+    return
+}
+
+func (o *SafeMap) LoadInt(key string) (val int, ok bool) {
+    var v interface{}
+    v,ok = o.Load(key)
+    if ok {
+        val,ok = v.(int)
+    }
+    return
+}
+
+func (o *SafeMap) LoadBool(key string) (val bool, ok bool) {
+    var v interface{}
+    v,ok = o.Load(key)
+    if ok {
+        val,ok = v.(bool)
+    }
+    return
+}
+
+func (o *SafeMap) LoadFloat64(key string) (val float64, ok bool) {
+    var v interface{}
+    v,ok = o.Load(key)
+    if ok {
+        val,ok = v.(float64)
+    }
+    return
+}
+
+
 
 // Delete removes the key from the map. If the key does not exist, nothing happens.
 func (o *SafeMap) Delete(key string) {

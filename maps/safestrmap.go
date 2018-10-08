@@ -77,18 +77,28 @@ func (o *SafeStringMap) Set(key string, val string) {
     o.Unlock()
 }
 
-// Get returns the string based on its key. If it does not exist, an empty string will be returned.
+// Get returns the value based on its key. If it does not exist, an empty string will be returned.
 func (o *SafeStringMap) Get(key string) (val string) {
+    val,_ = o.Load(key)
+	return
+}
+
+// Load returns the value based on its key, and a boolean indicating whether it exists in the map.
+// This is the same interface as sync.Map.Load()
+func (o *SafeStringMap) Load(key string) (val string, ok bool) {
     if o == nil {
 		return
 	}
     o.RLock()
 	if o.items != nil {
-	    val,_ = o.items[key]
+	    val,ok = o.items[key]
 	}
     o.RUnlock()
 	return
 }
+
+
+
 
 // Delete removes the key from the map. If the key does not exist, nothing happens.
 func (o *SafeStringMap) Delete(key string) {

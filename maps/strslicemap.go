@@ -112,16 +112,25 @@ func (o *StringSliceMap) Delete(key string) {
 	delete(o.items, key)
 }
 
-// Get returns the value based on its key. If the key does not exist, it will return an empty value.
+// Get returns the value based on its key. If the key does not exist, an empty value is returned.
 func (o *StringSliceMap) Get(key string) (val string) {
+    val,_ = o.Load(key)
+    return
+}
+
+// Load returns the value based on its key, and a boolean indicating whether it exists in the map.
+// This is the same interface as sync.Map.Load()
+func (o *StringSliceMap) Load(key string) (val string, ok bool) {
     if o == nil {
         return
     }
     if o.items != nil {
-    	val, _ = o.items[key]
+    	val, ok = o.items[key]
     }
 	return
 }
+
+
 
 // Has returns true if the given key exists in the map.
 func (o *StringSliceMap) Has(key string) (ok bool) {

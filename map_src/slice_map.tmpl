@@ -134,20 +134,65 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Delete(key {{.keytype}}) {
     o.Unlock(){{end}}
 }
 
-// Get returns the value based on its key. If the key does not exist, it will return an empty value.
+// Get returns the value based on its key. If the key does not exist, an empty value is returned.
 func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Get(key {{.keytype}}) (val {{.valtype}}) {
+    val,_ = o.Load(key)
+    return
+}
+
+// Load returns the value based on its key, and a boolean indicating whether it exists in the map.
+// This is the same interface as sync.Map.Load()
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Load(key {{.keytype}}) (val {{.valtype}}, ok bool) {
     if o == nil {
         return
     }
 {{- if .Safe}}
     o.RLock(){{end}}
     if o.items != nil {
-    	val, _ = o.items[key]
+    	val, ok = o.items[key]
     }
 {{- if .Safe}}
     o.RUnlock(){{end}}
 	return
 }
+
+{{if eq .valtype "interface{}"}}
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) LoadString(key {{.keytype}}) (val string, ok bool) {
+    var v interface{}
+    v,ok = o.Load(key)
+    if ok {
+        val,ok = v.(string)
+    }
+    return
+}
+
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) LoadInt(key {{.keytype}}) (val int, ok bool) {
+    var v interface{}
+    v,ok = o.Load(key)
+    if ok {
+        val,ok = v.(int)
+    }
+    return
+}
+
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) LoadBool(key {{.keytype}}) (val bool, ok bool) {
+    var v interface{}
+    v,ok = o.Load(key)
+    if ok {
+        val,ok = v.(bool)
+    }
+    return
+}
+
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) LoadFloat64(key {{.keytype}}) (val float64, ok bool) {
+    var v interface{}
+    v,ok = o.Load(key)
+    if ok {
+        val,ok = v.(float64)
+    }
+    return
+}
+{{end}}
 
 // Has returns true if the given key exists in the map.
 func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Has(key {{.keytype}}) (ok bool) {

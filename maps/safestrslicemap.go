@@ -120,18 +120,27 @@ func (o *SafeStringSliceMap) Delete(key string) {
     o.Unlock()
 }
 
-// Get returns the value based on its key. If the key does not exist, it will return an empty value.
+// Get returns the value based on its key. If the key does not exist, an empty value is returned.
 func (o *SafeStringSliceMap) Get(key string) (val string) {
+    val,_ = o.Load(key)
+    return
+}
+
+// Load returns the value based on its key, and a boolean indicating whether it exists in the map.
+// This is the same interface as sync.Map.Load()
+func (o *SafeStringSliceMap) Load(key string) (val string, ok bool) {
     if o == nil {
         return
     }
     o.RLock()
     if o.items != nil {
-    	val, _ = o.items[key]
+    	val, ok = o.items[key]
     }
     o.RUnlock()
 	return
 }
+
+
 
 // Has returns true if the given key exists in the map.
 func (o *SafeStringSliceMap) Has(key string) (ok bool) {

@@ -122,18 +122,63 @@ func (o *SafeSliceMap) Delete(key string) {
     o.Unlock()
 }
 
-// Get returns the value based on its key. If the key does not exist, it will return an empty value.
+// Get returns the value based on its key. If the key does not exist, an empty value is returned.
 func (o *SafeSliceMap) Get(key string) (val interface{}) {
+    val,_ = o.Load(key)
+    return
+}
+
+// Load returns the value based on its key, and a boolean indicating whether it exists in the map.
+// This is the same interface as sync.Map.Load()
+func (o *SafeSliceMap) Load(key string) (val interface{}, ok bool) {
     if o == nil {
         return
     }
     o.RLock()
     if o.items != nil {
-    	val, _ = o.items[key]
+    	val, ok = o.items[key]
     }
     o.RUnlock()
 	return
 }
+
+
+func (o *SafeSliceMap) LoadString(key string) (val string, ok bool) {
+    var v interface{}
+    v,ok = o.Load(key)
+    if ok {
+        val,ok = v.(string)
+    }
+    return
+}
+
+func (o *SafeSliceMap) LoadInt(key string) (val int, ok bool) {
+    var v interface{}
+    v,ok = o.Load(key)
+    if ok {
+        val,ok = v.(int)
+    }
+    return
+}
+
+func (o *SafeSliceMap) LoadBool(key string) (val bool, ok bool) {
+    var v interface{}
+    v,ok = o.Load(key)
+    if ok {
+        val,ok = v.(bool)
+    }
+    return
+}
+
+func (o *SafeSliceMap) LoadFloat64(key string) (val float64, ok bool) {
+    var v interface{}
+    v,ok = o.Load(key)
+    if ok {
+        val,ok = v.(float64)
+    }
+    return
+}
+
 
 // Has returns true if the given key exists in the map.
 func (o *SafeSliceMap) Has(key string) (ok bool) {
