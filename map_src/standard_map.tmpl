@@ -34,6 +34,15 @@ func New{{.Safe}}{{.KeyType}}{{.ValType}}MapFrom(i {{.KeyType}}{{.ValType}}MapI)
 	return m
 }
 
+// New{{.Safe}}{{.KeyType}}{{.ValType}}MapFromMap creates a new {{.Safe}}{{.KeyType}}{{.ValType}}Map from a
+// GO map[{{.keytype}}]{{.valtype}} object. Note that this will pass control of the given map to the
+// new object. After you do this, DO NOT change the original map.
+func New{{.Safe}}{{.KeyType}}{{.ValType}}MapFromMap(i map[{{.keytype}}]{{.valtype}}) *{{.Safe}}{{.KeyType}}{{.ValType}}Map {
+	m := New{{.Safe}}{{.KeyType}}{{.ValType}}Map()
+	m.items = i
+	return m
+}
+
 // Clear resets the map to an empty map
 func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Clear() {
     if o == nil {

@@ -22,15 +22,34 @@ type StringSliceMap struct {
 	order []string
 }
 
+// NewStringSliceMap creates a new map that maps string's to string's.
 func NewStringSliceMap() *StringSliceMap {
 	return new (StringSliceMap)
 }
 
+// NewStringSliceMapFrom creates a new StringMap from a
+// StringMapI interface object
 func NewStringSliceMapFrom(i StringMapI) *StringSliceMap {
 	m := new (StringSliceMap)
 	m.Merge(i)
 	return m
 }
+
+// NewStringSliceMapFromMap creates a new StringSliceMap from a
+// GO map[string]string object. Note that this will pass control of the given map to the
+// new object. After you do this, DO NOT change the original map.
+func NewStringSliceMapFromMap(i map[string]string) *StringSliceMap {
+	m := NewStringSliceMap()
+	m.items = i
+	m.order = make([]string, len(m.items), len(m.items))
+	j := 0
+	for k := range m.items {
+	    m.order[j] = k
+	    j++
+	}
+	return m
+}
+
 
 
 // SetChanged sets the value, but also appends the value to the end of the list.

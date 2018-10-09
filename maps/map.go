@@ -27,6 +27,15 @@ func NewMapFrom(i MapI) *Map {
 	return m
 }
 
+// NewMapFromMap creates a new Map from a
+// GO map[string]interface{} object. Note that this will pass control of the given map to the
+// new object. After you do this, DO NOT change the original map.
+func NewMapFromMap(i map[string]interface{}) *Map {
+	m := NewMap()
+	m.items = i
+	return m
+}
+
 // Clear resets the map to an empty map
 func (o *Map) Clear() {
     if o == nil {

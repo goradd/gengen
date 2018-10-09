@@ -24,15 +24,34 @@ type SliceMap struct {
 	order []string
 }
 
+// NewSliceMap creates a new map that maps string's to interface{}'s.
 func NewSliceMap() *SliceMap {
 	return new (SliceMap)
 }
 
+// NewSliceMapFrom creates a new Map from a
+// MapI interface object
 func NewSliceMapFrom(i MapI) *SliceMap {
 	m := new (SliceMap)
 	m.Merge(i)
 	return m
 }
+
+// NewSliceMapFromMap creates a new SliceMap from a
+// GO map[string]interface{} object. Note that this will pass control of the given map to the
+// new object. After you do this, DO NOT change the original map.
+func NewSliceMapFromMap(i map[string]interface{}) *SliceMap {
+	m := NewSliceMap()
+	m.items = i
+	m.order = make([]string, len(m.items), len(m.items))
+	j := 0
+	for k := range m.items {
+	    m.order[j] = k
+	    j++
+	}
+	return m
+}
+
 
 
 // SetChanged sets the value, but also appends the value to the end of the list.

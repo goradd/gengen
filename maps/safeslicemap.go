@@ -26,15 +26,34 @@ type SafeSliceMap struct {
 	order []string
 }
 
+// NewSafeSliceMap creates a new map that maps string's to interface{}'s.
 func NewSafeSliceMap() *SafeSliceMap {
 	return new (SafeSliceMap)
 }
 
+// NewSafeSliceMapFrom creates a new SafeMap from a
+// MapI interface object
 func NewSafeSliceMapFrom(i MapI) *SafeSliceMap {
 	m := new (SafeSliceMap)
 	m.Merge(i)
 	return m
 }
+
+// NewSafeSliceMapFromMap creates a new SafeSliceMap from a
+// GO map[string]interface{} object. Note that this will pass control of the given map to the
+// new object. After you do this, DO NOT change the original map.
+func NewSafeSliceMapFromMap(i map[string]interface{}) *SafeSliceMap {
+	m := NewSafeSliceMap()
+	m.items = i
+	m.order = make([]string, len(m.items), len(m.items))
+	j := 0
+	for k := range m.items {
+	    m.order[j] = k
+	    j++
+	}
+	return m
+}
+
 
 
 // SetChanged sets the value, but also appends the value to the end of the list.

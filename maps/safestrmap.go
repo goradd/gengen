@@ -30,6 +30,15 @@ func NewSafeStringMapFrom(i StringMapI) *SafeStringMap {
 	return m
 }
 
+// NewSafeStringMapFromMap creates a new SafeStringMap from a
+// GO map[string]string object. Note that this will pass control of the given map to the
+// new object. After you do this, DO NOT change the original map.
+func NewSafeStringMapFromMap(i map[string]string) *SafeStringMap {
+	m := NewSafeStringMap()
+	m.items = i
+	return m
+}
+
 // Clear resets the map to an empty map
 func (o *SafeStringMap) Clear() {
     if o == nil {

@@ -4,17 +4,26 @@ type {{.KeyType}}{{.ValType}}Getter interface {
 	Get(key {{.keytype }}) (val {{.valtype}})
 }
 
+type {{.KeyType}}{{.ValType}}Loader interface {
+	Load(key {{.keytype }}) (val {{.valtype}}, ok bool)
+}
+
+type {{.KeyType}}{{.ValType}}Setter interface {
+	Set({{.keytype }}, {{.valtype}})
+}
+
+
 // The {{.KeyType}}{{.ValType}}MapI interface provides a common interface to the many kinds of similar map objects.
+//
+// Most functions that change the map are omitted so that you can wrap the map in additional functionality that might
+// use Set or SetChanged. If you want to use them in an interface setting, you can create your own interface
+// that includes them.
 type {{.KeyType}}{{.ValType}}MapI interface {
-	SetChanged(key {{.keytype}}, val {{.valtype}}) (changed bool)
-	Set(key {{.keytype}}, val {{.valtype}})
 	Get(key {{.keytype}}) (val {{.valtype}})
 	Has(key {{.keytype}}) (exists bool)
-	Delete(key {{.keytype}})
 	Values() []{{.valtype}}
 	Keys() []{{.keytype}}
 	Len() int
-	Clear()
 	// Range will iterate over the keys and values in the map. Pattern is taken from sync.Map
 	Range(f func(key {{.keytype}}, value {{.valtype}}) bool)
 	Merge(i {{.KeyType}}{{.ValType}}MapI)

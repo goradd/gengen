@@ -30,6 +30,15 @@ func NewSafeMapFrom(i MapI) *SafeMap {
 	return m
 }
 
+// NewSafeMapFromMap creates a new SafeMap from a
+// GO map[string]interface{} object. Note that this will pass control of the given map to the
+// new object. After you do this, DO NOT change the original map.
+func NewSafeMapFromMap(i map[string]interface{}) *SafeMap {
+	m := NewSafeMap()
+	m.items = i
+	return m
+}
+
 // Clear resets the map to an empty map
 func (o *SafeMap) Clear() {
     if o == nil {

@@ -28,15 +28,34 @@ type {{.Safe}}{{.KeyType}}{{.ValType}}SliceMap struct {
 	order []{{.keytype}}
 }
 
+// New{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap creates a new map that maps {{.keytype}}'s to {{.valtype}}'s.
 func New{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap() *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap {
 	return new ({{.Safe}}{{.KeyType}}{{.ValType}}SliceMap)
 }
 
+// New{{.Safe}}{{.KeyType}}{{.ValType}}SliceMapFrom creates a new {{.Safe}}{{.KeyType}}{{.ValType}}Map from a
+// {{.KeyType}}{{.ValType}}MapI interface object
 func New{{.Safe}}{{.KeyType}}{{.ValType}}SliceMapFrom(i {{.KeyType}}{{.ValType}}MapI) *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap {
 	m := new ({{.Safe}}{{.KeyType}}{{.ValType}}SliceMap)
 	m.Merge(i)
 	return m
 }
+
+// New{{.Safe}}{{.KeyType}}{{.ValType}}SliceMapFromMap creates a new {{.Safe}}{{.KeyType}}{{.ValType}}SliceMap from a
+// GO map[{{.keytype}}]{{.valtype}} object. Note that this will pass control of the given map to the
+// new object. After you do this, DO NOT change the original map.
+func New{{.Safe}}{{.KeyType}}{{.ValType}}SliceMapFromMap(i map[{{.keytype}}]{{.valtype}}) *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap {
+	m := New{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap()
+	m.items = i
+	m.order = make([]{{.keytype}}, len(m.items), len(m.items))
+	j := 0
+	for k := range m.items {
+	    m.order[j] = k
+	    j++
+	}
+	return m
+}
+
 
 
 // SetChanged sets the value, but also appends the value to the end of the list.
