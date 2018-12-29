@@ -1,1 +1,1 @@
-module github.com/spekary/gengen
+module github.com/goradd/gengen
