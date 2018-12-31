@@ -1,4 +1,4 @@
-package gengen
+package main
 
 import (
 	"bytes"
