@@ -20,18 +20,8 @@ and start reading its json input from there.
 
 ## Installation
 
-To just use the pre-built library of collections, execute the following `go get` command and import the library into
-your project.
-
 ```shell
-go get github.com/goradd/gengen
-```
-
-If you want to build your own files, either using the pre-made generic templates, or by creating your own, you will
-need to install the `gengen` executable by doing the following instead:
-
-```shell
-go get -u github.com/goradd/gengen/...
+go get github.com/goradd/gengen/gengen
 ```
 
 ## Usage
