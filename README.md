@@ -21,7 +21,7 @@ and start reading its json input from there.
 ## Installation
 
 ```shell
-go get github.com/goradd/gengen/gengen
+go get -u github.com/goradd/gengen/...
 ```
 
 ## Usage
