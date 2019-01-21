@@ -1,3 +1,3 @@
 module github.com/goradd/gengen
 
-require github.com/goradd/gofile v0.1.2
+require github.com/goradd/gofile v0.1.4
