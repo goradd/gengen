@@ -1,6 +1,6 @@
 /*
-This config file sets up a map with a string key and a string value.
-KeyType is blank since a string key is the default for these maps, and makes it easier to type.
+This config file is for interfaces with an interface return type.
+Type is blank since an interface is the default output type.
 */
 {
   "package": "maps",

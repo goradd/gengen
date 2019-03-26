@@ -24,7 +24,7 @@ func main() {
 	flag.Parse() // regular run of program
 
 	if config == "" {
-		log.Fatal("you must specify a config file use the -c option.")
+		log.Fatal("you must specify a config file with the -c option.")
 	}
 
 	modules, err = sys.ModulePaths()
