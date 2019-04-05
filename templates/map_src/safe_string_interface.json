@@ -9,6 +9,5 @@ for these maps, and makes it easier to type.
   "ValType": "",
   "keytype": "string",
   "valtype": "interface{}",
-  "valueIsInterface": "true",
   "Safe": "Safe"
 }

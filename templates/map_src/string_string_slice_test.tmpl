@@ -31,6 +31,10 @@ func Test{{.MapType}}StringSliceMap(t *testing.T) {
 		t.Errorf("GetAt test failed. Expected  (%q) got (%q).", "Other", s)
 	}
 
+    if k := m.GetKeyAt(2); k != "C" {
+        t.Errorf("GetAt test failed. Expected  (%q) got (%q).", 1, s)
+    }
+
 	if s = m.GetAt(3); s != "" {
 		t.Errorf("GetAt test failed. Expected no response, got %q", s)
 	}
@@ -40,6 +44,12 @@ func Test{{.MapType}}StringSliceMap(t *testing.T) {
 	if s != "This+That+Other" {
 		t.Error("Failed Join.")
 	}
+
+    // Test that it satisfies the Sort interface
+    sort.Sort(m)
+    if s = m.GetAt(0); s != "That" {
+        t.Error("Sort interface test failed.")
+    }
 
 	m.Delete("A")
 
@@ -66,12 +76,6 @@ func Test{{.MapType}}StringSliceMap(t *testing.T) {
 	var i StringMapI = m
 	if s = i.Get("B"); s != "This" {
 		t.Error("StringMapI interface test failed.")
-	}
-
-	// Test that it satisfies the Sort interface
-	sort.Sort(m)
-	if s = m.GetAt(0); s != "Other" {
-		t.Error("Sort interface test failed.")
 	}
 
 	if changed := m.SetChanged("F", "9"); !changed {
@@ -113,7 +117,7 @@ func Example{{.MapType}}StringSliceMap_Range() {
 	fmt.Println()
 
 	// Iterate after sorting values
-	sort.Sort(m)
+	sort.Sort(Order{{.MapType}}StringSliceMapByValues(m))
 	m.Range(func(key string, val string) bool {
 		fmt.Printf("%s:%s,", key, val)
 		return true // keep iterating to the end
@@ -121,7 +125,7 @@ func Example{{.MapType}}StringSliceMap_Range() {
 	fmt.Println()
 
 	// Iterate after sorting keys
-	sort.Sort(Order{{.MapType}}StringSliceMapByKeys(m))
+	sort.Sort(m)
 	m.Range(func(key string, val string) bool {
 		fmt.Printf("%s:%s,", key, val)
 		return true // keep iterating to the end
@@ -177,7 +181,7 @@ func Example{{.MapType}}StringSliceMap_UnmarshalJSON() {
 	var m {{.MapType}}StringSliceMap
 
 	json.Unmarshal(b, &m)
-	sort.Sort(Order{{.MapType}}StringSliceMapByKeys(&m))
+	sort.Sort(&m)
 
 	fmt.Println(&m)
 

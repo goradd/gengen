@@ -1,9 +1,0 @@
-/*
-This config file is for interfaces with an interface return type.
-Type is blank since an interface is the default output type.
-*/
-{
-  "package": "maps",
-  "Type": "",
-  "type": "interface{}"
-}

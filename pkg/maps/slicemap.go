@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
-	"sort"
 	"strings"
 
 	"fmt"
@@ -211,6 +210,16 @@ func (o *SliceMap) GetAt(position int) (val interface{}) {
 	return
 }
 
+// GetKeyAt returns the key based on its position. If the position is out of bounds, an empty value is returned.
+func (o *SliceMap) GetKeyAt(position int) (key string) {
+    if o == nil {
+        return
+    }
+	if position < len(o.order) && position >= 0 {
+		key = o.order[position]
+	}
+	return
+}
 
 // Values returns a slice of the values in the order they were added or sorted.
 func (o *SliceMap) Values() (vals []interface{}) {
@@ -253,18 +262,12 @@ func (o *SliceMap) Len() int {
 	return l
 }
 
-// Less is part of the interface that allows the map to be sorted by values.
+// Less is part of the interface that allows the map to be sorted by keys.
 // It returns true if the value at position i should be sorted before the value at position j.
 func (o *SliceMap) Less(i, j int) bool {
 
 
-    switch v := o.items[o.order[i]].(type) {
-    case Comparer:
-        return v.Compare(o.items[o.order[j]]) < 0
-    default:
-    	panic ("Values are not sortable")
-    	return false
-    }
+	return o.order[i] < o.order[j]
 
 }
 
@@ -274,38 +277,13 @@ func (o *SliceMap) Swap(i, j int) {
 	o.order[i], o.order[j] = o.order[j], o.order[i]
 }
 
-// Sort by keys interface
-type sortbykeys struct {
-	// This embedded interface permits Reverse to use the methods of
-	// another interface implementation.
-	sort.Interface
-}
-
-// A helper function to allow SliceMaps to be sorted by keys
-// To sort the map by keys, call:
-//   sort.Sort(OrderStringSliceMapByKeys(m))
-func OrderSliceMapByKeys(o *SliceMap) sort.Interface {
-	return &sortbykeys{o}
-}
-
-// A helper function to allow SliceMaps to be sorted by keys
-func (r sortbykeys) Less(i, j int) bool {
-	var o *SliceMap = r.Interface.(*SliceMap)
-
-
-	return o.order[i] < o.order[j]
-
-}
+ 
 
 // Copy will make a copy of the map and a copy of the underlying data.
-// If the values implement the Copier interface, the value's Copy function will be called to deep copy the items.
 func (o *SliceMap) Copy() *SliceMap {
 	cp := NewSliceMap()
 
 	o.Range(func(key string, value interface{}) bool {
-		if copier, ok := value.(Copier); ok {
-			value = copier.Copy()
-		}
 
 		cp.Set(key, value)
 		return true

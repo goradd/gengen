@@ -258,31 +258,6 @@ func ExampleSafeMap_Equals() {
 	//Output: Equal
 }
 
-// Test the ability of the copy operation to do a deep copy if available
-
-type toCopySafe struct {
-    A int
-    b string
-}
-
-func (c *toCopySafe) Copy() interface{} {   // normally this would be a more descriptive interface
-    m := &toCopySafe{}
-    m.A = c.A
-    m.b = c.b
-    return m
-}
-
-func TestSafeCopy(t *testing.T) {
-    var c = toCopySafe{2,"s"}
-    m := NewSafeMap()
-    m.Set("this", &c)
-    n := m.Copy()
-    c.A = 5
-    if n.Get("this").(*toCopySafe).A != 2 {
-       t.Error(fmt.Sprintf("Simulated copy failed. A = %d", n.Get("this").(*toCopySafe).A ))
-    }
-}
-
 func ExampleSafeMap_MarshalBinary() {
 	// You would rarely call MarshallBinary directly, but rather would use an encoder, like GOB for binary encoding
 
