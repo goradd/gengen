@@ -187,6 +187,18 @@ func (o *SafeStringSliceMap) GetAt(position int) (val string) {
 	return
 }
 
+// GetKeyAt returns the key based on its position. If the position is out of bounds, an empty value is returned.
+func (o *SafeStringSliceMap) GetKeyAt(position int) (key string) {
+    if o == nil {
+        return
+    }
+    o.RLock()
+	if position < len(o.order) && position >= 0 {
+		key = o.order[position]
+	}
+    o.RUnlock()
+	return
+}
 
 // Values returns a slice of the values in the order they were added or sorted.
 func (o *SafeStringSliceMap) Values() (vals []string) {
@@ -235,14 +247,14 @@ func (o *SafeStringSliceMap) Len() int {
 	return l
 }
 
-// Less is part of the interface that allows the map to be sorted by values.
+// Less is part of the interface that allows the map to be sorted by keys.
 // It returns true if the value at position i should be sorted before the value at position j.
 func (o *SafeStringSliceMap) Less(i, j int) bool {
+
 	o.RLock()
 	defer o.RUnlock()
 
-
-	return o.items[o.order[i]] < o.items[o.order[j]]
+	return o.order[i] < o.order[j]
 
 }
 
@@ -254,30 +266,35 @@ func (o *SafeStringSliceMap) Swap(i, j int) {
     o.Unlock()
 }
 
-// Sort by keys interface
-type sortSafeStringbykeys struct {
+
+
+// sortSafeStringByValues is a helper structure so the map can be sorted by value
+type sortSafeStringByValues struct {
 	// This embedded interface permits Reverse to use the methods of
 	// another interface implementation.
 	sort.Interface
 }
 
-// A helper function to allow SafeStringSliceMaps to be sorted by keys
-// To sort the map by keys, call:
-//   sort.Sort(OrderSafeStringStringSliceMapByKeys(m))
-func OrderSafeStringSliceMapByKeys(o *SafeStringSliceMap) sort.Interface {
-	return &sortSafeStringbykeys{o}
+// OrderSafeStringSliceMapByValues is a helper function to allow
+// SafeStringSliceMaps to be sorted by values.
+// To sort the map by values, call:
+//   sort.Sort(OrderSafeStringSliceMapByValues(m))
+func OrderSafeStringSliceMapByValues(o *SafeStringSliceMap) sort.Interface {
+	return &sortSafeStringByValues{o}
 }
 
-// A helper function to allow SafeStringSliceMaps to be sorted by keys
-func (r sortSafeStringbykeys) Less(i, j int) bool {
+// A helper function to allow SafeStringSliceMaps to be sorted by values
+func (r sortSafeStringByValues) Less(i, j int) bool {
 	var o *SafeStringSliceMap = r.Interface.(*SafeStringSliceMap)
 	o.RLock()
 	defer o.RUnlock()
 
 
-	return o.order[i] < o.order[j]
+	return o.items[o.order[i]] < o.items[o.order[j]]
 
 }
+
+ 
 
 // Copy will make a copy of the map and a copy of the underlying data.
 func (o *SafeStringSliceMap) Copy() *SafeStringSliceMap {

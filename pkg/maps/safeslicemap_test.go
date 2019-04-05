@@ -31,6 +31,10 @@ func TestSafeSliceMap(t *testing.T) {
 		t.Errorf("GetAt test failed. Expected  (%q) got (%q).", 1, s)
 	}
 
+    if k := m.GetKeyAt(2); k != "C" {
+        t.Errorf("GetAt test failed. Expected  (%q) got (%q).", 1, s)
+    }
+
 	if m.GetAt(3) != nil {
 		t.Errorf("GetAt test failed. Expected no response, got %q", s)
 	}
@@ -102,7 +106,7 @@ func ExampleSafeSliceMap_Range() {
 
 
 	// Iterate after sorting keys
-	sort.Sort(OrderSafeSliceMapByKeys(m))
+	sort.Sort(m)
 	m.Range(func(key string, val interface{}) bool {
 		fmt.Printf("%s:%s,", key, val)
 		return true // keep iterating to the end
@@ -157,7 +161,7 @@ func ExampleSafeSliceMap_UnmarshalJSON() {
 	var m SafeSliceMap
 
 	json.Unmarshal(b, &m)
-	sort.Sort(OrderSafeSliceMapByKeys(&m))
+	sort.Sort(&m)
 	fmt.Println(&m)
 
 	// Output: {"A":"That","B":"This","C":"Other"}

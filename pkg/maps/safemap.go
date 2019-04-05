@@ -285,15 +285,10 @@ func (o *SafeMap) Equals(i MapI) bool {
 }
 
 // Copy will make a copy of the map and a copy of the underlying data.
-// If the values implement the Copier interface, the value's Copy function will be called to deep copy the items.
 func (o *SafeMap) Copy() MapI {
 	cp := NewSafeMap()
 
 	o.Range(func(key string, value interface{}) bool {
-
-		if copier, ok := value.(Copier); ok {
-			value = copier.Copy()
-		}
 
 
 

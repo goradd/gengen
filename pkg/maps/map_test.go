@@ -258,31 +258,6 @@ func ExampleMap_Equals() {
 	//Output: Equal
 }
 
-// Test the ability of the copy operation to do a deep copy if available
-
-type toCopy struct {
-    A int
-    b string
-}
-
-func (c *toCopy) Copy() interface{} {   // normally this would be a more descriptive interface
-    m := &toCopy{}
-    m.A = c.A
-    m.b = c.b
-    return m
-}
-
-func TestCopy(t *testing.T) {
-    var c = toCopy{2,"s"}
-    m := NewMap()
-    m.Set("this", &c)
-    n := m.Copy()
-    c.A = 5
-    if n.Get("this").(*toCopy).A != 2 {
-       t.Error(fmt.Sprintf("Simulated copy failed. A = %d", n.Get("this").(*toCopy).A ))
-    }
-}
-
 func ExampleMap_MarshalBinary() {
 	// You would rarely call MarshallBinary directly, but rather would use an encoder, like GOB for binary encoding
 

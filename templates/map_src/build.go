@@ -4,9 +4,6 @@ package templates
 // in this directory. You can use this as an example of how to use GoT to build your own custom
 // versions of the maps here.
 
-//go:generate gengen -c string_i.json  -o ../../pkg/maps/strmapi2.go mapi2.tmpl
-//go:generate gengen -c interface_i.json  -o ../../pkg/maps/mapi2.go mapi2.tmpl
-
 //go:generate gengen -c string_string.json  -o ../../pkg/maps/strmapi.go mapi.tmpl
 
 //go:generate gengen -c string_string.json  -o ../../pkg/maps/strmap.go standard_map.tmpl

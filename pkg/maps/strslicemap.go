@@ -173,6 +173,16 @@ func (o *StringSliceMap) GetAt(position int) (val string) {
 	return
 }
 
+// GetKeyAt returns the key based on its position. If the position is out of bounds, an empty value is returned.
+func (o *StringSliceMap) GetKeyAt(position int) (key string) {
+    if o == nil {
+        return
+    }
+	if position < len(o.order) && position >= 0 {
+		key = o.order[position]
+	}
+	return
+}
 
 // Values returns a slice of the values in the order they were added or sorted.
 func (o *StringSliceMap) Values() (vals []string) {
@@ -215,12 +225,12 @@ func (o *StringSliceMap) Len() int {
 	return l
 }
 
-// Less is part of the interface that allows the map to be sorted by values.
+// Less is part of the interface that allows the map to be sorted by keys.
 // It returns true if the value at position i should be sorted before the value at position j.
 func (o *StringSliceMap) Less(i, j int) bool {
 
 
-	return o.items[o.order[i]] < o.items[o.order[j]]
+	return o.order[i] < o.order[j]
 
 }
 
@@ -230,28 +240,33 @@ func (o *StringSliceMap) Swap(i, j int) {
 	o.order[i], o.order[j] = o.order[j], o.order[i]
 }
 
-// Sort by keys interface
-type sortStringbykeys struct {
+
+
+// sortStringByValues is a helper structure so the map can be sorted by value
+type sortStringByValues struct {
 	// This embedded interface permits Reverse to use the methods of
 	// another interface implementation.
 	sort.Interface
 }
 
-// A helper function to allow StringSliceMaps to be sorted by keys
-// To sort the map by keys, call:
-//   sort.Sort(OrderStringStringSliceMapByKeys(m))
-func OrderStringSliceMapByKeys(o *StringSliceMap) sort.Interface {
-	return &sortStringbykeys{o}
+// OrderStringSliceMapByValues is a helper function to allow
+// StringSliceMaps to be sorted by values.
+// To sort the map by values, call:
+//   sort.Sort(OrderStringSliceMapByValues(m))
+func OrderStringSliceMapByValues(o *StringSliceMap) sort.Interface {
+	return &sortStringByValues{o}
 }
 
-// A helper function to allow StringSliceMaps to be sorted by keys
-func (r sortStringbykeys) Less(i, j int) bool {
+// A helper function to allow StringSliceMaps to be sorted by values
+func (r sortStringByValues) Less(i, j int) bool {
 	var o *StringSliceMap = r.Interface.(*StringSliceMap)
 
 
-	return o.order[i] < o.order[j]
+	return o.items[o.order[i]] < o.items[o.order[j]]
 
 }
+
+ 
 
 // Copy will make a copy of the map and a copy of the underlying data.
 func (o *StringSliceMap) Copy() *StringSliceMap {

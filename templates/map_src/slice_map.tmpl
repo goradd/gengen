@@ -1,10 +1,44 @@
+{{- /*
+This template outputs a slice-map, which is a golang map that is sortable and iterable in a predictable way.
+By default, the order is the same as the order items are inserted, but you can sort by keys, or possibly by
+values as well.
+
+This template expects to be driven by a structure or map with the following keys. The github.com/goradd/gengen app lets
+you easily create a json file that can be used to provide these values.
+
+Values are:
+package: the package name
+KeyType: the CamelCase type of the key. This name will be used in function titles. Leave blank if a string type, since
+         that is the default.
+ValType: the CamelCase type of the value. This name will be used in function titles. Leave blank if an interface{},
+         since that is the default.
+keytype: the go type as used as an actual type of key variables.
+valtype: the go type as used as an actual type of value variables.
+Safe: put the word "Safe" here if you want a map synchronized with sync.Lock methods
+
+valueIsCopier: If true, the value implements a Copy function which returns a value type. Otherwise, a golang = will
+               be used to make a copy.
+keyIsCopier: If true, the key implements a Copy function which returns a value type. Otherwise, a golang = will
+               be used to make a copy.
+
+For the following boolean values, you would set one, or none of them, true. They tell the template how to implement
+the value sorter. If none of these are true, a value sorter will not be included. It WILL still be able to sort by
+keys, since all maps require standard golang comparable keys.
+
+valueIsComparer: The value satisfies its Comparer interface, meaning it implements Compare(v) int, which returns
+                 -1, 0 or 1 depending whether the receiver is less than, equal or greater than the passed value.
+                 If your value is an interface, the interface should include this function.
+valueIsComparable: Set this to true if standard golang < will work for comparing values.
+
+*/ -}}
 package {{.package}}
 
 import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
-	"sort"
+{{- if or .valueIsComparer .valueIsComparable}}
+	"sort"{{end}}
 	"strings"
 {{- if .Safe}}
     "sync"{{end}}
@@ -243,6 +277,20 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) GetAt(position int) (val {{.
 	return
 }
 
+// GetKeyAt returns the key based on its position. If the position is out of bounds, an empty value is returned.
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) GetKeyAt(position int) (key {{.keytype}}) {
+    if o == nil {
+        return
+    }
+{{- if .Safe}}
+    o.RLock(){{end}}
+	if position < len(o.order) && position >= 0 {
+		key = o.order[position]
+	}
+{{- if .Safe}}
+    o.RUnlock(){{end}}
+	return
+}
 
 // Values returns a slice of the values in the order they were added or sorted.
 func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Values() (vals []{{.valtype}}) {
@@ -301,25 +349,16 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Len() int {
 	return l
 }
 
-// Less is part of the interface that allows the map to be sorted by values.
+// Less is part of the interface that allows the map to be sorted by keys.
 // It returns true if the value at position i should be sorted before the value at position j.
 func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Less(i, j int) bool {
-{{- if .Safe}}
+{{ if .Safe}}
 	o.RLock()
 	defer o.RUnlock(){{end}}
-
-{{if .valueIsComparer}}
-    return o.items[o.order[i]].Compare(o.items[o.order[j]]) < 0
-{{else if .valueIsInterface}}
-    switch v := o.items[o.order[i]].(type) {
-    case {{.ValType}}Comparer:
-        return v.Compare(o.items[o.order[j]]) < 0
-    default:
-    	panic ("Values are not sortable")
-    	return false
-    }
+{{if .keyIsComparer}}
+    return o.order[i].Compare(o.order[j]) < 0
 {{else}}
-	return o.items[o.order[i]] < o.items[o.order[j]]
+	return o.order[i] < o.order[j]
 {{end}}
 }
 
@@ -333,62 +372,49 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Swap(i, j int) {
     o.Unlock(){{end}}
 }
 
-// Sort by keys interface
-type sort{{.Safe}}{{.KeyType}}{{.ValType}}bykeys struct {
+{{if or .valueIsComparer .valueIsComparable}}
+
+// sort{{.Safe}}{{.KeyType}}{{.ValType}}ByValues is a helper structure so the map can be sorted by value
+type sort{{.Safe}}{{.KeyType}}{{.ValType}}ByValues struct {
 	// This embedded interface permits Reverse to use the methods of
 	// another interface implementation.
 	sort.Interface
 }
 
-// A helper function to allow {{.Safe}}{{.KeyType}}{{.ValType}}SliceMaps to be sorted by keys
-// To sort the map by keys, call:
-//   sort.Sort(Order{{.Safe}}{{.KeyType}}{{.ValType}}StringSliceMapByKeys(m))
-func Order{{.Safe}}{{.KeyType}}{{.ValType}}SliceMapByKeys(o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) sort.Interface {
-	return &sort{{.Safe}}{{.KeyType}}{{.ValType}}bykeys{o}
+// Order{{.Safe}}{{.KeyType}}{{.ValType}}SliceMapByValues is a helper function to allow
+// {{.Safe}}{{.KeyType}}{{.ValType}}SliceMaps to be sorted by values.
+// To sort the map by values, call:
+//   sort.Sort(Order{{.Safe}}{{.KeyType}}{{.ValType}}SliceMapByValues(m))
+func Order{{.Safe}}{{.KeyType}}{{.ValType}}SliceMapByValues(o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) sort.Interface {
+	return &sort{{.Safe}}{{.KeyType}}{{.ValType}}ByValues{o}
 }
 
-// A helper function to allow {{.Safe}}{{.KeyType}}{{.ValType}}SliceMaps to be sorted by keys
-func (r sort{{.Safe}}{{.KeyType}}{{.ValType}}bykeys) Less(i, j int) bool {
+// A helper function to allow {{.Safe}}{{.KeyType}}{{.ValType}}SliceMaps to be sorted by values
+func (r sort{{.Safe}}{{.KeyType}}{{.ValType}}ByValues) Less(i, j int) bool {
 	var o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap = r.Interface.(*{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap)
 {{- if .Safe}}
 	o.RLock()
 	defer o.RUnlock(){{end}}
 
-{{if .keyIsComparer}}
-    return o.order[i].Compare(o.order[j]) < 0
-{{else if .keyIsInterface}}
-    switch v := o.order[i].(type) {
-    case {{.KeyType}}Comparer:
-        return v.Compare(o.order[j]) < 0
-    default:
-    	panic ("Keys are not sortable")
-    	return false
-    }
-{{else}}
-	return o.order[i] < o.order[j]
+{{if .valueIsComparer}}
+    return o.items[o.order[i]].Compare(o.items[o.order[j]]) < 0
+{{else if .valueIsComparable}}
+	return o.items[o.order[i]] < o.items[o.order[j]]
 {{end}}
 }
 
+{{end}} {{/* if or .valueIsComparer .valueIsComparable */}}
+
 // Copy will make a copy of the map and a copy of the underlying data.
-{{- if not .valueIsCopyable}}{{if .valueIsInterface}}
-// If the values implement the {{.ValType}}Copier interface, the value's Copy function will be called to deep copy the items.{{end}}{{end}}
 func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Copy() *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap {
 	cp := New{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap()
 
 	o.Range(func(key {{.keytype}}, value {{.valtype}}) bool {
-{{- if .valueIsCopyable}}
-        value = value.Copy()
-{{- else if .valueIsInterface}}
-		if copier, ok := value.({{.ValType}}Copier); ok {
-			value = copier.Copy()
-		}{{end}}
+{{- if .valueIsCopier}}
+        value = value.Copy(){{end}}
 
-{{- if .keyIsCopyable}}
-        key = key.Copy()
-{{- else if .keyIsInterface}}
-		if copier, ok := key.({{.KeyType}}Copier); ok {
-			key = copier.Copy()
-		}{{end}}
+{{- if .keyIsCopier}}
+        key = key.Copy(){{end}}
 
 		cp.Set(key, value)
 		return true

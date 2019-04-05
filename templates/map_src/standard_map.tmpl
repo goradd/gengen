@@ -1,3 +1,27 @@
+{{- /*
+This template outputs a standard map, which is a golang map that implements the MapI interface. The benefit of using
+this map is that it is easy to convert to a slice map, safe map, etc. since it uses the same interface to do its work.
+Since its a standard golang map under the hood, iteration order is unpredictable.
+
+This template expects to be driven by a structure or map with the following keys. The github.com/goradd/gengen app lets
+you easily create a json file that can be used to provide these values.
+
+Values are:
+package: the package name
+KeyType: the CamelCase type of the key. This name will be used in function titles. Leave blank if a string type, since
+         that is the default.
+ValType: the CamelCase type of the value. This name will be used in function titles. Leave blank if an interface{},
+         since that is the default.
+keytype: the go type as used as an actual type of key variables.
+valtype: the go type as used as an actual type of value variables.
+Safe: put the word "Safe" here if you want a map synchronized with sync.Lock methods
+
+valueIsCopier: If true, the value implements a Copy function which returns a value type. Otherwise, a golang = will
+               be used to make a copy.
+keyIsCopier: If true, the key implements a Copy function which returns a value type. Otherwise, a golang = will
+               be used to make a copy.
+
+*/ -}}
 package {{.package}}
 
 import (
@@ -321,20 +345,12 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Copy() {{.KeyType}}{{.ValType}}Ma
 	cp := New{{.Safe}}{{.KeyType}}{{.ValType}}Map()
 
 	o.Range(func(key {{.keytype}}, value {{.valtype}}) bool {
-{{if .valueIsCopyable}}
+{{if .valueIsCopier}}
         value = value.Copy()
-{{else if .valueIsInterface}}
-		if copier, ok := value.({{.ValType}}Copier); ok {
-			value = copier.Copy()
-		}
 {{end}}
 
-{{if .keyIsCopyable}}
+{{if .keyIsCopier}}
         key = key.Copy()
-{{else if .keyIsInterface}}
-		if copier, ok := key.({{.KeyType}}Copier); ok {
-			key = copier.Copy()
-		}
 {{end}}
 
 		cp.Set(key, value)

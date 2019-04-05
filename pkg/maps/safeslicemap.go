@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
-	"sort"
 	"strings"
     "sync"
 
@@ -225,6 +224,18 @@ func (o *SafeSliceMap) GetAt(position int) (val interface{}) {
 	return
 }
 
+// GetKeyAt returns the key based on its position. If the position is out of bounds, an empty value is returned.
+func (o *SafeSliceMap) GetKeyAt(position int) (key string) {
+    if o == nil {
+        return
+    }
+    o.RLock()
+	if position < len(o.order) && position >= 0 {
+		key = o.order[position]
+	}
+    o.RUnlock()
+	return
+}
 
 // Values returns a slice of the values in the order they were added or sorted.
 func (o *SafeSliceMap) Values() (vals []interface{}) {
@@ -273,20 +284,14 @@ func (o *SafeSliceMap) Len() int {
 	return l
 }
 
-// Less is part of the interface that allows the map to be sorted by values.
+// Less is part of the interface that allows the map to be sorted by keys.
 // It returns true if the value at position i should be sorted before the value at position j.
 func (o *SafeSliceMap) Less(i, j int) bool {
+
 	o.RLock()
 	defer o.RUnlock()
 
-
-    switch v := o.items[o.order[i]].(type) {
-    case Comparer:
-        return v.Compare(o.items[o.order[j]]) < 0
-    default:
-    	panic ("Values are not sortable")
-    	return false
-    }
+	return o.order[i] < o.order[j]
 
 }
 
@@ -298,40 +303,13 @@ func (o *SafeSliceMap) Swap(i, j int) {
     o.Unlock()
 }
 
-// Sort by keys interface
-type sortSafebykeys struct {
-	// This embedded interface permits Reverse to use the methods of
-	// another interface implementation.
-	sort.Interface
-}
-
-// A helper function to allow SafeSliceMaps to be sorted by keys
-// To sort the map by keys, call:
-//   sort.Sort(OrderSafeStringSliceMapByKeys(m))
-func OrderSafeSliceMapByKeys(o *SafeSliceMap) sort.Interface {
-	return &sortSafebykeys{o}
-}
-
-// A helper function to allow SafeSliceMaps to be sorted by keys
-func (r sortSafebykeys) Less(i, j int) bool {
-	var o *SafeSliceMap = r.Interface.(*SafeSliceMap)
-	o.RLock()
-	defer o.RUnlock()
-
-
-	return o.order[i] < o.order[j]
-
-}
+ 
 
 // Copy will make a copy of the map and a copy of the underlying data.
-// If the values implement the Copier interface, the value's Copy function will be called to deep copy the items.
 func (o *SafeSliceMap) Copy() *SafeSliceMap {
 	cp := NewSafeSliceMap()
 
 	o.Range(func(key string, value interface{}) bool {
-		if copier, ok := value.(Copier); ok {
-			value = copier.Copy()
-		}
 
 		cp.Set(key, value)
 		return true
