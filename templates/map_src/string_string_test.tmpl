@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"bytes"
+	"encoding/gob"
 )
 
 func Test{{.MapType}}StringMap(t *testing.T) {
@@ -102,8 +104,9 @@ func Example{{.MapType}}StringMap_Set() {
 	// Output Here
 }
 
+
 func Example{{.MapType}}StringMap_Values() {
-	m := NewStringMap()
+	m := New{{.MapType}}StringMap()
 	m.Set("B", "This")
 	m.Set("A", "That")
 	m.Set("C", "Other")
@@ -127,8 +130,8 @@ func Example{{.MapType}}StringMap_Keys() {
 }
 
 func Example{{.MapType}}StringMap_Range() {
-	m := NewStringMap()
-	a := []string{}
+	m := New{{.MapType}}StringMap()
+	var a []string
 
 	m.Set("B", "This")
 	m.Set("A", "That")
@@ -166,9 +169,19 @@ func ExampleNew{{.MapType}}StringMapFrom() {
     n.Set("a", "this")
     n.Set("b", "that")
 	m := New{{.MapType}}StringMapFrom(n)
+
 	fmt.Println(m.Get("b"))
 	//Output: that
 }
+
+func ExampleNew{{.MapType}}StringMapFromMap() {
+    n:= map[string]string{"a":"this","b":"that"}
+	m := New{{.MapType}}StringMapFromMap(n)
+
+	fmt.Println(m.String())
+	// Output: {"a":"this","b":"that"}
+}
+
 
 func Example{{.MapType}}StringMap_Equals() {
 	m := New{{.MapType}}StringMap()
@@ -183,6 +196,19 @@ func Example{{.MapType}}StringMap_Equals() {
 		fmt.Print("Not Equal")
 	}
 	//Output: Equal
+}
+
+func Test{{.MapType}}StringMapCopy(t *testing.T) {
+    n:= map[string]string{"a":"this","b":"that","c":"other"}
+	m := New{{.MapType}}StringMapFromMap(n)
+	c := m.Copy()
+	m.Delete("b")
+	if !c.Has("b") {
+	    t.Error("Underlying data did not copy")
+	}
+    if c.String() != `{"a":"this","b":"that","c":"other"}` {
+	    t.Error("Did not copy")
+    }
 }
 
 func Test{{.MapType}}StringMapEmpty(t *testing.T) {
@@ -241,4 +267,26 @@ func Test{{.MapType}}StringMapEmpty(t *testing.T) {
     }
 
 
+}
+
+func Test{{.MapType}}StringMap_MarshalBinary(t *testing.T) {
+	m := new ({{.MapType}}StringMap)
+	var m2 {{.MapType}}StringMap
+
+	m.Set("B", "This")
+	m.Set("A", "That")
+	m.Set("C", "Other")
+
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf) // Will write
+	dec := gob.NewDecoder(&buf) // Will read
+
+	enc.Encode(m)
+	dec.Decode(&m2)
+	if s := m2.Get("A"); s != "That" {
+	    t.Error("MarshalBinary failed")
+	}
+	if s := m2.Get("B"); s != "This" {
+	    t.Error("MarshalBinary failed")
+	}
 }

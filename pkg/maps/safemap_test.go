@@ -165,11 +165,33 @@ func TestSafeMapNotEqual(t *testing.T) {
 	}
 }
 
+func TestSafeMapLoaders(t *testing.T) {
+    n := map[string]interface{}{"a":1,"b":"2","c":3.0, "d":true}
+    m := NewSafeMapFromMap(n)
+
+    if i,ok := m.LoadInt("a"); i != 1 || !ok {
+        t.Error("LoadInt failed")
+    }
+    if j,ok := m.LoadString("b"); j != "2" || !ok {
+        t.Error("LoadString failed")
+    }
+    if k,ok := m.LoadFloat64("c"); k != 3.0 || !ok {
+        t.Error("LoadFloat failed")
+    }
+    if l,ok := m.LoadBool("d"); l != true || !ok {
+        t.Error("LoadBool failed")
+    }
+
+    if _,ok := m.LoadFloat64("d"); ok {
+        t.Error("Type check failed")
+    }
+}
+
 func ExampleSafeMap_Set() {
 	m := NewSafeMap()
 	m.Set("a", "Here")
-	fmt.Println(m.Get("a"))
-	// Output: Here
+	fmt.Println(m.String())
+	// Output: {"a":"Here"}
 }
 
 func ExampleSafeMap_Values() {
@@ -306,4 +328,53 @@ func ExampleSafeMap_UnmarshalJSON() {
 	fmt.Println(m.Get("C"))
 
 	// Output: 3
+}
+
+func TestSafeMapEmpty(t *testing.T) {
+    var m *SafeMap
+    var n = new(SafeMap)
+
+    if !m.IsNil() {
+        t.Error("Empty Nil test failed")
+    }
+
+    if n.IsNil() {
+        t.Error("Empty Nil test failed")
+    }
+
+    for _, o := range ([]*SafeMap{m, n}) {
+        i := o.Get("A")
+        if i != nil {
+            t.Error("Empty Get failed")
+        }
+        if o.Has("A") {
+            t.Error("Empty Has failed")
+        }
+        o.Delete("E")
+        o.Clear()
+
+        if len(o.Values()) != 0 {
+            t.Error("Empty Values() failed")
+        }
+
+        if len(o.Keys()) != 0 {
+            t.Error("Empty Keys() failed")
+        }
+
+        o.Merge(nil)
+
+    }
+
+    if !m.Equals(n) {
+        t.Error("Empty Equals() failed")
+    }
+    n.Set("a","b")
+    if m.Equals(n) {
+       t.Error("Empty Equals() failed")
+    }
+    if n.Equals(m) {
+       t.Error("Empty Equals() failed")
+    }
+
+
 }

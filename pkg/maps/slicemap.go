@@ -6,9 +6,7 @@ import (
 	"encoding/json"
 	"sort"
 	"strings"
-
 	"fmt"
-
 )
 
 // A SliceMap combines a map with a slice so that you can range over a
@@ -75,6 +73,8 @@ func keySortSliceMap(key1, key2 string, val1, val2 interface{}) bool {
     return key1 < key2
 }
 
+
+
 // SetChanged sets the value.
 // It returns true if something in the map changed. If the key
 // was already in the map, and you have not provided a sort function,
@@ -98,14 +98,15 @@ func (o *SliceMap) SetChanged(key string, val interface{}) (changed bool) {
             if ok {
                 // delete old key location
                 loc := sort.Search (len(o.items), func(n int) bool {
-                    return o.lessF(key, o.order[n], oldVal, o.items[o.order[n]])
+                    return !o.lessF(o.order[n], key, o.items[o.order[n]], oldVal)
                 })
                 o.order = append(o.order[:loc], o.order[loc+1:]...)
             }
 
-            loc := sort.Search (len(o.items), func(n int) bool {
+            loc := sort.Search (len(o.order), func(n int) bool {
                 return o.lessF(key, o.order[n], val, o.items[o.order[n]])
             })
+            // insert
             o.order = append(o.order, key)
             copy(o.order[loc+1:], o.order[loc:])
             o.order[loc] = key
@@ -172,7 +173,7 @@ func (o *SliceMap) Delete(key string) {
         if o.lessF != nil {
             oldVal := o.items[key]
             loc := sort.Search (len(o.items), func(n int) bool {
-                return o.lessF(key, o.order[n], oldVal, o.items[o.order[n]])
+                return !o.lessF(o.order[n], key, o.items[o.order[n]], oldVal)
             })
             o.order = append(o.order[:loc], o.order[loc+1:]...)
         } else {
@@ -327,6 +328,7 @@ func (o *SliceMap) Copy() *SliceMap {
 		cp.Set(key, value)
 		return true
 	})
+	cp.lessF = o.lessF
 	return cp
 }
 
@@ -454,8 +456,7 @@ func (o *SliceMap) String() string {
 
 	s = "{"
 	o.Range(func(k string, v interface{}) bool {
-		s += `"` + k + `":"` +
-fmt.Sprintf("%v", v)+ `",`
+		s += fmt.Sprintf(`%#v:%#v,`, k, v)
 		return true
 	})
 	s = strings.TrimRight(s, ",")

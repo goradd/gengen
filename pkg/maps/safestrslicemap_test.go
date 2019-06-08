@@ -93,6 +93,15 @@ func TestSafeStringSliceMapChange(t *testing.T) {
 	if changed := m.SetChanged("D", "And another"); changed {
 		t.Error("Set again erroneously produced a change flag")
 	}
+
+	m.SortByValues()
+	if m.GetKeyAt(0) != "D" {
+		t.Error("Sort not change order")
+	}
+	m.Set("D", "Z")
+	if m.GetKeyAt(0) != "C" {
+		t.Error("Changed value did not change order")
+	}
 }
 
 func ExampleSafeStringSliceMap_Range() {
@@ -109,10 +118,9 @@ func ExampleSafeStringSliceMap_Range() {
 	})
 	fmt.Println()
 
-	// Iterate after sorting values
-    m.SetSortFunc(func(key1, key2 string, val1, val2 string) bool {
-        return val1 < val2
-    })
+    m.SortByValues()
+    m.Set("D", "Other2") // test adding value after sorting
+
 
 	m.Range(func(key string, val string) bool {
 		fmt.Printf("%s:%s,", key, val)
@@ -120,10 +128,8 @@ func ExampleSafeStringSliceMap_Range() {
 	})
 	fmt.Println()
 
-	// Iterate after sorting keys
-    m.SetSortFunc(func(key1, key2 string, val1, val2 string) bool {
-        return key1 < key2
-    })
+	m.SortByKeys()
+
 	m.Range(func(key string, val string) bool {
 		fmt.Printf("%s:%s,", key, val)
 		return true // keep iterating to the end
@@ -131,13 +137,11 @@ func ExampleSafeStringSliceMap_Range() {
 	fmt.Println()
 
 	// Output: B:This,A:That,C:Other,
-	// C:Other,A:That,B:This,
-	// A:That,B:This,C:Other,
+	// C:Other,D:Other2,A:That,B:This,
+	// A:That,B:This,C:Other,D:Other2,
 }
 
-func ExampleSafeStringSliceMap_MarshalBinary() {
-	// You would rarely call MarshallBinary directly, but rather would use an encoder, like GOB for binary encoding
-
+func TestSafeStringSliceMap_MarshalBinary(t *testing.T) {
 	m := new (SafeStringSliceMap)
 	var m2 SafeStringSliceMap
 
@@ -151,12 +155,12 @@ func ExampleSafeStringSliceMap_MarshalBinary() {
 
 	enc.Encode(m)
 	dec.Decode(&m2)
-	s := m2.Get("A")
-	fmt.Println(s)
-	s = m2.GetAt(2)
-	fmt.Println(s)
-	// Output: That
-	// Other
+	if s := m2.Get("A"); s != "That" {
+	    t.Error("MarshalBinary failed")
+	}
+	if s := m2.GetAt(2); s != "Other" {
+	    t.Error("MarshalBinary failed")
+	}
 }
 
 func ExampleSafeStringSliceMap_MarshalJSON() {
@@ -201,6 +205,16 @@ func ExampleSafeStringSliceMap_Merge() {
 	//Output: Last
 }
 
+func ExampleSafeStringSliceMap_Delete() {
+    n:= map[string]string{"a":"this","b":"that","c":"other"}
+    m := NewSafeStringSliceMapFromMap(n)
+    m.SortByKeys()
+    m.Delete("b")
+	fmt.Println(m.String())
+	// Output: {"a":"this","c":"other"}
+}
+
+
 func ExampleSafeStringSliceMap_Values() {
 	m := new (SafeStringSliceMap)
 	m.Set("B", "This")
@@ -209,7 +223,7 @@ func ExampleSafeStringSliceMap_Values() {
 
 	values := m.Values()
 	fmt.Println(values)
-	//Output: [This That Other]
+	// Output: [This That Other]
 }
 
 func ExampleSafeStringSliceMap_Keys() {
@@ -220,7 +234,7 @@ func ExampleSafeStringSliceMap_Keys() {
 
 	values := m.Keys()
 	fmt.Println(values)
-	//Output: [B A C]
+	// Output: [B A C]
 }
 
 func ExampleNewSafeStringSliceMapFrom() {
@@ -229,8 +243,18 @@ func ExampleNewSafeStringSliceMapFrom() {
     n.Set("b", "that")
 	m := NewSafeStringSliceMapFrom(n)
 	fmt.Println(m.Get("b"))
-	//Output: that
+	// Output: that
 }
+
+func ExampleNewSafeStringSliceMapFromMap() {
+    n:= map[string]string{"a":"this","b":"that"}
+	m := NewSafeStringSliceMapFromMap(n)
+	m.SortByKeys()
+
+	fmt.Println(m.String())
+	// Output: {"a":"this","b":"that"}
+}
+
 
 func ExampleSafeStringSliceMap_Equals() {
     n := new (StringMap)
@@ -238,11 +262,18 @@ func ExampleSafeStringSliceMap_Equals() {
     n.Set("B", "That")
 	m := NewSafeStringSliceMapFrom(n)
 	if m.Equals(n) {
-		fmt.Print("Equal")
+		fmt.Println("Equal")
 	} else {
-		fmt.Print("Not Equal")
+		fmt.Println("Not Equal")
 	}
-	//Output: Equal
+	m.Set("B","Other")
+	if m.Equals(n) {
+		fmt.Println("Equal")
+	} else {
+		fmt.Println("Not Equal")
+	}
+	// Output: Equal
+	// Not Equal
 }
 
 func TestSafeStringSliceMap_SetAt(t *testing.T) {
@@ -284,4 +315,77 @@ func TestSafeStringSliceMap_SetAt(t *testing.T) {
     if "G" != m.GetAt(1) {
         t.Errorf("Beginning insert failed. Expected G and got %s", m.GetAt(1))
     }
+}
+
+func TestSafeStringSliceMapCopy(t *testing.T) {
+    n:= map[string]string{"a":"this","b":"that","c":"other"}
+	m := NewSafeStringSliceMapFromMap(n)
+	m.SortByKeys()
+	c := m.Copy()
+	m.Delete("b")
+	if !c.Has("b") {
+	    t.Error("Underlying data did not copy")
+	}
+    if c.String() != `{"a":"this","b":"that","c":"other"}` {
+	    t.Error("Did not copy")
+    }
+}
+
+
+func TestSafeStringSliceMapEmpty(t *testing.T) {
+    var m *SafeStringSliceMap
+    var n = new(SafeStringSliceMap)
+
+    if !m.IsNil() {
+        t.Error("Empty Nil test failed")
+    }
+
+    if n.IsNil() {
+        t.Error("Empty Nil test failed")
+    }
+
+    for _, o := range ([]*SafeStringSliceMap{m, n}) {
+        i := o.Get("A")
+        if i != "" {
+            t.Error("Empty Get failed")
+        }
+        if o.Has("A") {
+            t.Error("Empty Has failed")
+        }
+        o.Delete("E")
+        o.Clear()
+
+        if len(o.Values()) != 0 {
+            t.Error("Empty Values() failed")
+        }
+
+        if len(o.Keys()) != 0 {
+            t.Error("Empty Keys() failed")
+        }
+
+        var j int
+        o.Range(func (k string, v string) bool {
+            j = 1
+            return false
+        })
+        if j == 1 {
+            t.Error("Empty Range failed")
+        }
+
+        o.Merge(nil)
+
+    }
+
+    if !m.Equals(n) {
+        t.Error("Empty Equals() failed")
+    }
+    n.Set("a","b")
+    if m.Equals(n) {
+       t.Error("Empty Equals() failed")
+    }
+    if n.Equals(m) {
+       t.Error("Empty Equals() failed")
+    }
+
+
 }

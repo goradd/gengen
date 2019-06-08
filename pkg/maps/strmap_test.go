@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"bytes"
+	"encoding/gob"
 )
 
 func TestStringMap(t *testing.T) {
@@ -102,6 +104,7 @@ func ExampleStringMap_Set() {
 	// Output Here
 }
 
+
 func ExampleStringMap_Values() {
 	m := NewStringMap()
 	m.Set("B", "This")
@@ -128,7 +131,7 @@ func ExampleStringMap_Keys() {
 
 func ExampleStringMap_Range() {
 	m := NewStringMap()
-	a := []string{}
+	var a []string
 
 	m.Set("B", "This")
 	m.Set("A", "That")
@@ -166,9 +169,19 @@ func ExampleNewStringMapFrom() {
     n.Set("a", "this")
     n.Set("b", "that")
 	m := NewStringMapFrom(n)
+
 	fmt.Println(m.Get("b"))
 	//Output: that
 }
+
+func ExampleNewStringMapFromMap() {
+    n:= map[string]string{"a":"this","b":"that"}
+	m := NewStringMapFromMap(n)
+
+	fmt.Println(m.String())
+	// Output: {"a":"this","b":"that"}
+}
+
 
 func ExampleStringMap_Equals() {
 	m := NewStringMap()
@@ -183,6 +196,19 @@ func ExampleStringMap_Equals() {
 		fmt.Print("Not Equal")
 	}
 	//Output: Equal
+}
+
+func TestStringMapCopy(t *testing.T) {
+    n:= map[string]string{"a":"this","b":"that","c":"other"}
+	m := NewStringMapFromMap(n)
+	c := m.Copy()
+	m.Delete("b")
+	if !c.Has("b") {
+	    t.Error("Underlying data did not copy")
+	}
+    if c.String() != `{"a":"this","b":"that","c":"other"}` {
+	    t.Error("Did not copy")
+    }
 }
 
 func TestStringMapEmpty(t *testing.T) {
@@ -241,4 +267,26 @@ func TestStringMapEmpty(t *testing.T) {
     }
 
 
+}
+
+func TestStringMap_MarshalBinary(t *testing.T) {
+	m := new (StringMap)
+	var m2 StringMap
+
+	m.Set("B", "This")
+	m.Set("A", "That")
+	m.Set("C", "Other")
+
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf) // Will write
+	dec := gob.NewDecoder(&buf) // Will read
+
+	enc.Encode(m)
+	dec.Decode(&m2)
+	if s := m2.Get("A"); s != "That" {
+	    t.Error("MarshalBinary failed")
+	}
+	if s := m2.Get("B"); s != "This" {
+	    t.Error("MarshalBinary failed")
+	}
 }
