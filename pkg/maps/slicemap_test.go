@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"sort"
 )
 
 func TestSliceMap(t *testing.T) {
@@ -106,7 +105,7 @@ func ExampleSliceMap_Range() {
 
 
 	// Iterate after sorting keys
-	sort.Sort(m)
+	m.SortByKeys()
 	m.Range(func(key string, val interface{}) bool {
 		fmt.Printf("%s:%s,", key, val)
 		return true // keep iterating to the end
@@ -161,7 +160,7 @@ func ExampleSliceMap_UnmarshalJSON() {
 	var m SliceMap
 
 	json.Unmarshal(b, &m)
-	sort.Sort(&m)
+	m.SortByKeys()
 	fmt.Println(&m)
 
 	// Output: {"A":"That","B":"This","C":"Other"}
@@ -238,7 +237,7 @@ func TestSliceMap_SetAt(t *testing.T) {
 	    t.Errorf("Middle insert failed. Expected C and got %s", m.GetAt(1))
 	}
 
-	m.SetAt(-2, "d", "D")
+	m.SetAt(-1, "d", "D")
     if "D" != m.GetAt(2) {
         t.Errorf("Middle insert failed. Expected D and got %s", m.GetAt(2))
     }
@@ -247,7 +246,7 @@ func TestSliceMap_SetAt(t *testing.T) {
     }
 
 	// Test end inserts
-	m.SetAt(-1, "e", "E")
+	m.SetAt(m.Len(), "e", "E")
 	m.SetAt(1000, "f", "F")
     if "E" != m.GetAt(4) {
         t.Errorf("End insert failed. Expected E and got %s", m.GetAt(4))

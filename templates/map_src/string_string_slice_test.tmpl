@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sort"
 	"testing"
 )
 
@@ -44,12 +43,6 @@ func Test{{.MapType}}StringSliceMap(t *testing.T) {
 	if s != "This+That+Other" {
 		t.Error("Failed Join.")
 	}
-
-    // Test that it satisfies the Sort interface
-    sort.Sort(m)
-    if s = m.GetAt(0); s != "That" {
-        t.Error("Sort interface test failed.")
-    }
 
 	m.Delete("A")
 
@@ -117,7 +110,10 @@ func Example{{.MapType}}StringSliceMap_Range() {
 	fmt.Println()
 
 	// Iterate after sorting values
-	sort.Sort(Order{{.MapType}}StringSliceMapByValues(m))
+    m.SetSortFunc(func(key1, key2 string, val1, val2 string) bool {
+        return val1 < val2
+    })
+
 	m.Range(func(key string, val string) bool {
 		fmt.Printf("%s:%s,", key, val)
 		return true // keep iterating to the end
@@ -125,7 +121,9 @@ func Example{{.MapType}}StringSliceMap_Range() {
 	fmt.Println()
 
 	// Iterate after sorting keys
-	sort.Sort(m)
+    m.SetSortFunc(func(key1, key2 string, val1, val2 string) bool {
+        return key1 < key2
+    })
 	m.Range(func(key string, val string) bool {
 		fmt.Printf("%s:%s,", key, val)
 		return true // keep iterating to the end
@@ -181,7 +179,7 @@ func Example{{.MapType}}StringSliceMap_UnmarshalJSON() {
 	var m {{.MapType}}StringSliceMap
 
 	json.Unmarshal(b, &m)
-	sort.Sort(&m)
+	m.SortByKeys()
 
 	fmt.Println(&m)
 
@@ -259,7 +257,7 @@ func Test{{.MapType}}StringSliceMap_SetAt(t *testing.T) {
 	    t.Errorf("Middle insert failed. Expected C and got %s", m.GetAt(1))
 	}
 
-	m.SetAt(-2, "d", "D")
+	m.SetAt(-1, "d", "D")
     if "D" != m.GetAt(2) {
         t.Errorf("Middle insert failed. Expected D and got %s", m.GetAt(2))
     }
@@ -268,7 +266,7 @@ func Test{{.MapType}}StringSliceMap_SetAt(t *testing.T) {
     }
 
 	// Test end inserts
-	m.SetAt(-1, "e", "E")
+	m.SetAt(m.Len(), "e", "E")
 	m.SetAt(1000, "f", "F")
     if "E" != m.GetAt(4) {
         t.Errorf("End insert failed. Expected E and got %s", m.GetAt(4))

@@ -22,6 +22,7 @@ type SafeStringSliceMap struct {
     sync.RWMutex
 	items map[string]string
 	order []string
+	lessF func(key1,key2 string, val1, val2 string) bool
 }
 
 // NewSafeStringSliceMap creates a new map that maps string's to string's.
@@ -52,12 +53,36 @@ func NewSafeStringSliceMapFromMap(i map[string]string) *SafeStringSliceMap {
 	return m
 }
 
+// SetSortFunc sets the sort function which will determine the order of the items in the map
+// on an ongoing basis. Normally, items will iterate in the order they were added.
+// The sort function is a Less function, that returns true when item 1 is "less" than item 2.
+// The sort function receives both the keys and values, so it can use either to decide how to sort.
+func (o *SafeStringSliceMap) SetSortFunc(f func(key1,key2 string, val1, val2 string) bool) {
+        o.Lock()
+    o.lessF = f
+    if f != nil && len(o.order) > 0 {
+        sort.Slice(o.order, func(i,j int) bool {
+            return f(o.order[i], o.order[j], o.items[o.order[i]], o.items[o.order[j]])
+        })
+    }
+        o.Unlock()
+}
 
+// SortByKeys sets up the map to have its sort order sort by keys, lowest to highest
+func (o *SafeStringSliceMap) SortByKeys() {
+    o.SetSortFunc(keySortSafeStringSliceMap)
+}
 
-// SetChanged sets the value, but also appends the value to the end of the list.
+func keySortSafeStringSliceMap(key1, key2 string, val1, val2 string) bool {
+    return key1 < key2
+}
+
+// SetChanged sets the value.
 // It returns true if something in the map changed. If the key
-// was already in the map, the order will not change, but the value will be replaced. If you want the
-// order to change, you must Delete then call SetChanged.
+// was already in the map, and you have not provided a sort function,
+// the order will not change, but the value will be replaced. If you wanted the
+// order to change, you must Delete then call SetChanged. If you have previously set a sort function,
+// the order will be updated.
 func (o *SafeStringSliceMap) SetChanged(key string, val string) (changed bool) {
 	var ok bool
 	var oldVal string
@@ -72,8 +97,25 @@ func (o *SafeStringSliceMap) SetChanged(key string, val string) (changed bool) {
 	}
 
 	if oldVal, ok = o.items[key]; !ok || oldVal != val {
-		if !ok {
-			o.order = append(o.order, key)
+        if o.lessF != nil {
+            if ok {
+                // delete old key location
+                loc := sort.Search (len(o.items), func(n int) bool {
+                    return o.lessF(key, o.order[n], oldVal, o.items[o.order[n]])
+                })
+                o.order = append(o.order[:loc], o.order[loc+1:]...)
+            }
+
+            loc := sort.Search (len(o.items), func(n int) bool {
+                return o.lessF(key, o.order[n], val, o.items[o.order[n]])
+            })
+            o.order = append(o.order, key)
+            copy(o.order[loc+1:], o.order[loc:])
+            o.order[loc] = key
+        } else {
+		    if !ok {
+			    o.order = append(o.order, key)
+		    }
 		}
 		o.items[key] = val
 		changed = true
@@ -90,14 +132,17 @@ func (o *SafeStringSliceMap) Set(key string, val string) {
 }
 
 // SetAt sets the given key to the given value, but also inserts it at the index specified.  If the index is bigger than
-// the length, or -1, it is the same as Set, in that it puts it at the end. Negative indexes are backwards from the
-// end, if smaller than the negative length, just inserts at the beginning.
+// the length, it puts it at the end. Negative indexes are backwards from the end.
 func (o *SafeStringSliceMap) SetAt(index int, key string, val string)  {
     if o == nil {
         panic("You must initialize the map before using it.")
     }
 
-	if index == -1 || index >= len(o.order) {
+    if o.lessF != nil {
+        panic("You cannot use SetAt if you are also using a sort function.")
+    }
+
+	if index >= len(o.order) {
 		o.Set(key, val)
 		return
 	}
@@ -107,11 +152,11 @@ func (o *SafeStringSliceMap) SetAt(index int, key string, val string)  {
     o.Lock()
 
 	if _, ok = o.items[key]; !ok {
-		if index < -len(o.items) {
+		if index <= -len(o.items) {
 			index = 0
 		}
 		if index < 0 {
-			index = len(o.items) + index + 1
+			index = len(o.items) + index
 		}
 
 		o.order = append(o.order, emptyKey)
@@ -129,13 +174,24 @@ func (o *SafeStringSliceMap) Delete(key string) {
         return
     }
     o.Lock()
-	for i, v := range o.order {
-		if v == key {
-			o.order = append(o.order[:i], o.order[i+1:]...)
-			break
-		}
-	}
-	delete(o.items, key)
+
+    if _,ok := o.items[key]; ok {
+        if o.lessF != nil {
+            oldVal := o.items[key]
+            loc := sort.Search (len(o.items), func(n int) bool {
+                return o.lessF(key, o.order[n], oldVal, o.items[o.order[n]])
+            })
+            o.order = append(o.order[:loc], o.order[loc+1:]...)
+        } else {
+            for i, v := range o.order {
+                if v == key {
+                    o.order = append(o.order[:i], o.order[i+1:]...)
+                    break
+                }
+            }
+        }
+        delete(o.items, key)
+    }
     o.Unlock()
 }
 
@@ -247,54 +303,6 @@ func (o *SafeStringSliceMap) Len() int {
 	return l
 }
 
-// Less is part of the interface that allows the map to be sorted by keys.
-// It returns true if the value at position i should be sorted before the value at position j.
-func (o *SafeStringSliceMap) Less(i, j int) bool {
-
-	o.RLock()
-	defer o.RUnlock()
-
-	return o.order[i] < o.order[j]
-
-}
-
-// Swap is part of the interface that allows the slice to be sorted. It swaps the positions
-// of the items and position i and j.
-func (o *SafeStringSliceMap) Swap(i, j int) {
-	o.Lock()
-	o.order[i], o.order[j] = o.order[j], o.order[i]
-    o.Unlock()
-}
-
-
-
-// sortSafeStringByValues is a helper structure so the map can be sorted by value
-type sortSafeStringByValues struct {
-	// This embedded interface permits Reverse to use the methods of
-	// another interface implementation.
-	sort.Interface
-}
-
-// OrderSafeStringSliceMapByValues is a helper function to allow
-// SafeStringSliceMaps to be sorted by values.
-// To sort the map by values, call:
-//   sort.Sort(OrderSafeStringSliceMapByValues(m))
-func OrderSafeStringSliceMapByValues(o *SafeStringSliceMap) sort.Interface {
-	return &sortSafeStringByValues{o}
-}
-
-// A helper function to allow SafeStringSliceMaps to be sorted by values
-func (r sortSafeStringByValues) Less(i, j int) bool {
-	var o *SafeStringSliceMap = r.Interface.(*SafeStringSliceMap)
-	o.RLock()
-	defer o.RUnlock()
-
-
-	return o.items[o.order[i]] < o.items[o.order[j]]
-
-}
-
- 
 
 // Copy will make a copy of the map and a copy of the underlying data.
 func (o *SafeStringSliceMap) Copy() *SafeStringSliceMap {
@@ -309,6 +317,8 @@ func (o *SafeStringSliceMap) Copy() *SafeStringSliceMap {
 }
 
 // MarshalBinary implements the BinaryMarshaler interface to convert the map to a byte stream.
+// If you are using a sort function, you must save and restore the sort function in a separate operation
+// since functions are not serializable.
 func (o *SafeStringSliceMap) MarshalBinary() (data []byte, err error) {
 	buf := new(bytes.Buffer)
 	encoder := gob.NewEncoder(buf)

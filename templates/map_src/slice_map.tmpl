@@ -37,8 +37,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
-{{- if or .valueIsComparer .valueIsComparable}}
-	"sort"{{end}}
+	"sort"
 	"strings"
 {{- if .Safe}}
     "sync"{{end}}
@@ -60,6 +59,7 @@ type {{.Safe}}{{.KeyType}}{{.ValType}}SliceMap struct {
     sync.RWMutex{{end}}
 	items map[{{.keytype}}]{{.valtype}}
 	order []{{.keytype}}
+	lessF func(key1,key2 {{.keytype}}, val1, val2 {{.valtype}}) bool
 }
 
 // New{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap creates a new map that maps {{.keytype}}'s to {{.valtype}}'s.
@@ -90,12 +90,38 @@ func New{{.Safe}}{{.KeyType}}{{.ValType}}SliceMapFromMap(i map[{{.keytype}}]{{.v
 	return m
 }
 
+// SetSortFunc sets the sort function which will determine the order of the items in the map
+// on an ongoing basis. Normally, items will iterate in the order they were added.
+// The sort function is a Less function, that returns true when item 1 is "less" than item 2.
+// The sort function receives both the keys and values, so it can use either to decide how to sort.
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) SetSortFunc(f func(key1,key2 {{.keytype}}, val1, val2 {{.valtype}}) bool) {
+    {{- if .Safe}}
+        o.Lock(){{end}}
+    o.lessF = f
+    if f != nil && len(o.order) > 0 {
+        sort.Slice(o.order, func(i,j int) bool {
+            return f(o.order[i], o.order[j], o.items[o.order[i]], o.items[o.order[j]])
+        })
+    }
+    {{- if .Safe}}
+        o.Unlock(){{end}}
+}
 
+// SortByKeys sets up the map to have its sort order sort by keys, lowest to highest
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) SortByKeys() {
+    o.SetSortFunc(keySort{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap)
+}
 
-// SetChanged sets the value, but also appends the value to the end of the list.
+func keySort{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap(key1, key2 {{.keytype}}, val1, val2 {{.valtype}}) bool {
+    return key1 < key2
+}
+
+// SetChanged sets the value.
 // It returns true if something in the map changed. If the key
-// was already in the map, the order will not change, but the value will be replaced. If you want the
-// order to change, you must Delete then call SetChanged.
+// was already in the map, and you have not provided a sort function,
+// the order will not change, but the value will be replaced. If you wanted the
+// order to change, you must Delete then call SetChanged. If you have previously set a sort function,
+// the order will be updated.
 func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) SetChanged(key {{.keytype}}, val {{.valtype}}) (changed bool) {
 	var ok bool
 	var oldVal {{.valtype}}
@@ -112,8 +138,25 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) SetChanged(key {{.keytype}},
 	}
 
 	if oldVal, ok = o.items[key]; !ok || oldVal != val {
-		if !ok {
-			o.order = append(o.order, key)
+        if o.lessF != nil {
+            if ok {
+                // delete old key location
+                loc := sort.Search (len(o.items), func(n int) bool {
+                    return o.lessF(key, o.order[n], oldVal, o.items[o.order[n]])
+                })
+                o.order = append(o.order[:loc], o.order[loc+1:]...)
+            }
+
+            loc := sort.Search (len(o.items), func(n int) bool {
+                return o.lessF(key, o.order[n], val, o.items[o.order[n]])
+            })
+            o.order = append(o.order, key)
+            copy(o.order[loc+1:], o.order[loc:])
+            o.order[loc] = key
+        } else {
+		    if !ok {
+			    o.order = append(o.order, key)
+		    }
 		}
 		o.items[key] = val
 		changed = true
@@ -132,14 +175,17 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Set(key {{.keytype}}, val {{
 }
 
 // SetAt sets the given key to the given value, but also inserts it at the index specified.  If the index is bigger than
-// the length, or -1, it is the same as Set, in that it puts it at the end. Negative indexes are backwards from the
-// end, if smaller than the negative length, just inserts at the beginning.
+// the length, it puts it at the end. Negative indexes are backwards from the end.
 func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) SetAt(index int, key {{.keytype}}, val {{.valtype}})  {
     if o == nil {
         panic("You must initialize the map before using it.")
     }
 
-	if index == -1 || index >= len(o.order) {
+    if o.lessF != nil {
+        panic("You cannot use SetAt if you are also using a sort function.")
+    }
+
+	if index >= len(o.order) {
 		o.Set(key, val)
 		return
 	}
@@ -151,11 +197,11 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) SetAt(index int, key {{.keyt
     o.Lock(){{end}}
 
 	if _, ok = o.items[key]; !ok {
-		if index < -len(o.items) {
+		if index <= -len(o.items) {
 			index = 0
 		}
 		if index < 0 {
-			index = len(o.items) + index + 1
+			index = len(o.items) + index
 		}
 
 		o.order = append(o.order, emptyKey)
@@ -176,13 +222,24 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Delete(key {{.keytype}}) {
 
 {{- if .Safe}}
     o.Lock(){{end}}
-	for i, v := range o.order {
-		if v == key {
-			o.order = append(o.order[:i], o.order[i+1:]...)
-			break
-		}
-	}
-	delete(o.items, key)
+
+    if _,ok := o.items[key]; ok {
+        if o.lessF != nil {
+            oldVal := o.items[key]
+            loc := sort.Search (len(o.items), func(n int) bool {
+                return o.lessF(key, o.order[n], oldVal, o.items[o.order[n]])
+            })
+            o.order = append(o.order[:loc], o.order[loc+1:]...)
+        } else {
+            for i, v := range o.order {
+                if v == key {
+                    o.order = append(o.order[:i], o.order[i+1:]...)
+                    break
+                }
+            }
+        }
+        delete(o.items, key)
+    }
 {{- if .Safe}}
     o.Unlock(){{end}}
 }
@@ -349,61 +406,6 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Len() int {
 	return l
 }
 
-// Less is part of the interface that allows the map to be sorted by keys.
-// It returns true if the value at position i should be sorted before the value at position j.
-func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Less(i, j int) bool {
-{{ if .Safe}}
-	o.RLock()
-	defer o.RUnlock(){{end}}
-{{if .keyIsComparer}}
-    return o.order[i].Compare(o.order[j]) < 0
-{{else}}
-	return o.order[i] < o.order[j]
-{{end}}
-}
-
-// Swap is part of the interface that allows the slice to be sorted. It swaps the positions
-// of the items and position i and j.
-func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Swap(i, j int) {
-{{- if .Safe}}
-	o.Lock(){{end}}
-	o.order[i], o.order[j] = o.order[j], o.order[i]
-{{- if .Safe}}
-    o.Unlock(){{end}}
-}
-
-{{if or .valueIsComparer .valueIsComparable}}
-
-// sort{{.Safe}}{{.KeyType}}{{.ValType}}ByValues is a helper structure so the map can be sorted by value
-type sort{{.Safe}}{{.KeyType}}{{.ValType}}ByValues struct {
-	// This embedded interface permits Reverse to use the methods of
-	// another interface implementation.
-	sort.Interface
-}
-
-// Order{{.Safe}}{{.KeyType}}{{.ValType}}SliceMapByValues is a helper function to allow
-// {{.Safe}}{{.KeyType}}{{.ValType}}SliceMaps to be sorted by values.
-// To sort the map by values, call:
-//   sort.Sort(Order{{.Safe}}{{.KeyType}}{{.ValType}}SliceMapByValues(m))
-func Order{{.Safe}}{{.KeyType}}{{.ValType}}SliceMapByValues(o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) sort.Interface {
-	return &sort{{.Safe}}{{.KeyType}}{{.ValType}}ByValues{o}
-}
-
-// A helper function to allow {{.Safe}}{{.KeyType}}{{.ValType}}SliceMaps to be sorted by values
-func (r sort{{.Safe}}{{.KeyType}}{{.ValType}}ByValues) Less(i, j int) bool {
-	var o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap = r.Interface.(*{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap)
-{{- if .Safe}}
-	o.RLock()
-	defer o.RUnlock(){{end}}
-
-{{if .valueIsComparer}}
-    return o.items[o.order[i]].Compare(o.items[o.order[j]]) < 0
-{{else if .valueIsComparable}}
-	return o.items[o.order[i]] < o.items[o.order[j]]
-{{end}}
-}
-
-{{end}} {{/* if or .valueIsComparer .valueIsComparable */}}
 
 // Copy will make a copy of the map and a copy of the underlying data.
 func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Copy() *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap {
@@ -423,6 +425,8 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Copy() *{{.Safe}}{{.KeyType}
 }
 
 // MarshalBinary implements the BinaryMarshaler interface to convert the map to a byte stream.
+// If you are using a sort function, you must save and restore the sort function in a separate operation
+// since functions are not serializable.
 func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) MarshalBinary() (data []byte, err error) {
 	buf := new(bytes.Buffer)
 	encoder := gob.NewEncoder(buf)
