@@ -21,14 +21,9 @@ valueIsCopier: If true, the value implements a Copy function which returns a val
 keyIsCopier: If true, the key implements a Copy function which returns a value type. Otherwise, a golang = will
                be used to make a copy.
 
-For the following boolean values, you would set one, or none of them, true. They tell the template how to implement
-the value sorter. If none of these are true, a value sorter will not be included. It WILL still be able to sort by
-keys, since all maps require standard golang comparable keys.
+valueIsComparable: Set this to true if standard golang < will work for comparing values. This will produce a
+             SortByValues() function that lets you set the slice to maintain its order by value.
 
-valueIsComparer: The value satisfies its Comparer interface, meaning it implements Compare(v) int, which returns
-                 -1, 0 or 1 depending whether the receiver is less than, equal or greater than the passed value.
-                 If your value is an interface, the interface should include this function.
-valueIsComparable: Set this to true if standard golang < will work for comparing values.
 
 */ -}}
 package {{.package}}
@@ -39,11 +34,9 @@ import (
 	"encoding/json"
 	"sort"
 	"strings"
+	"fmt"
 {{- if .Safe}}
     "sync"{{end}}
-{{if ne .valtype "string"}}
-	"fmt"
-{{end}}
 )
 
 // A {{.Safe}}{{.KeyType}}{{.ValType}}SliceMap combines a map with a slice so that you can range over a
@@ -116,6 +109,17 @@ func keySort{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap(key1, key2 {{.keytype}}, v
     return key1 < key2
 }
 
+{{if .valueIsComparable}}
+// SortByValues sets up the map to have its sort order sort by values, lowest to highest
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) SortByValues() {
+    o.SetSortFunc(valueSort{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap)
+}
+
+func valueSort{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap(key1, key2 {{.keytype}}, val1, val2 {{.valtype}}) bool {
+    return val1 < val2
+}
+{{end}}
+
 // SetChanged sets the value.
 // It returns true if something in the map changed. If the key
 // was already in the map, and you have not provided a sort function,
@@ -142,14 +146,15 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) SetChanged(key {{.keytype}},
             if ok {
                 // delete old key location
                 loc := sort.Search (len(o.items), func(n int) bool {
-                    return o.lessF(key, o.order[n], oldVal, o.items[o.order[n]])
+                    return !o.lessF(o.order[n], key, o.items[o.order[n]], oldVal)
                 })
                 o.order = append(o.order[:loc], o.order[loc+1:]...)
             }
 
-            loc := sort.Search (len(o.items), func(n int) bool {
+            loc := sort.Search (len(o.order), func(n int) bool {
                 return o.lessF(key, o.order[n], val, o.items[o.order[n]])
             })
+            // insert
             o.order = append(o.order, key)
             copy(o.order[loc+1:], o.order[loc:])
             o.order[loc] = key
@@ -227,7 +232,7 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Delete(key {{.keytype}}) {
         if o.lessF != nil {
             oldVal := o.items[key]
             loc := sort.Search (len(o.items), func(n int) bool {
-                return o.lessF(key, o.order[n], oldVal, o.items[o.order[n]])
+                return !o.lessF(o.order[n], key, o.items[o.order[n]], oldVal)
             })
             o.order = append(o.order[:loc], o.order[loc+1:]...)
         } else {
@@ -421,6 +426,7 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Copy() *{{.Safe}}{{.KeyType}
 		cp.Set(key, value)
 		return true
 	})
+	cp.lessF = o.lessF
 	return cp
 }
 
@@ -571,13 +577,7 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) String() string {
 
 	s = "{"
 	o.Range(func(k {{.keytype}}, v {{.valtype}}) bool {
-		s += `"` + k + `":"` +
-{{if eq .valtype "string" -}}
-        v
-{{- else -}}
-        fmt.Sprintf("%v", v)
-{{- end -}}
-		 + `",`
+		s += fmt.Sprintf(`%#v:%#v,`, k, v)
 		return true
 	})
 	s = strings.TrimRight(s, ",")

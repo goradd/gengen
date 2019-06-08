@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"bytes"
+	"encoding/gob"
 )
 
 func TestSafeStringMap(t *testing.T) {
@@ -102,8 +104,9 @@ func ExampleSafeStringMap_Set() {
 	// Output Here
 }
 
+
 func ExampleSafeStringMap_Values() {
-	m := NewStringMap()
+	m := NewSafeStringMap()
 	m.Set("B", "This")
 	m.Set("A", "That")
 	m.Set("C", "Other")
@@ -127,8 +130,8 @@ func ExampleSafeStringMap_Keys() {
 }
 
 func ExampleSafeStringMap_Range() {
-	m := NewStringMap()
-	a := []string{}
+	m := NewSafeStringMap()
+	var a []string
 
 	m.Set("B", "This")
 	m.Set("A", "That")
@@ -166,9 +169,19 @@ func ExampleNewSafeStringMapFrom() {
     n.Set("a", "this")
     n.Set("b", "that")
 	m := NewSafeStringMapFrom(n)
+
 	fmt.Println(m.Get("b"))
 	//Output: that
 }
+
+func ExampleNewSafeStringMapFromMap() {
+    n:= map[string]string{"a":"this","b":"that"}
+	m := NewSafeStringMapFromMap(n)
+
+	fmt.Println(m.String())
+	// Output: {"a":"this","b":"that"}
+}
+
 
 func ExampleSafeStringMap_Equals() {
 	m := NewSafeStringMap()
@@ -183,6 +196,19 @@ func ExampleSafeStringMap_Equals() {
 		fmt.Print("Not Equal")
 	}
 	//Output: Equal
+}
+
+func TestSafeStringMapCopy(t *testing.T) {
+    n:= map[string]string{"a":"this","b":"that","c":"other"}
+	m := NewSafeStringMapFromMap(n)
+	c := m.Copy()
+	m.Delete("b")
+	if !c.Has("b") {
+	    t.Error("Underlying data did not copy")
+	}
+    if c.String() != `{"a":"this","b":"that","c":"other"}` {
+	    t.Error("Did not copy")
+    }
 }
 
 func TestSafeStringMapEmpty(t *testing.T) {
@@ -241,4 +267,26 @@ func TestSafeStringMapEmpty(t *testing.T) {
     }
 
 
+}
+
+func TestSafeStringMap_MarshalBinary(t *testing.T) {
+	m := new (SafeStringMap)
+	var m2 SafeStringMap
+
+	m.Set("B", "This")
+	m.Set("A", "That")
+	m.Set("C", "Other")
+
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf) // Will write
+	dec := gob.NewDecoder(&buf) // Will read
+
+	enc.Encode(m)
+	dec.Decode(&m2)
+	if s := m2.Get("A"); s != "That" {
+	    t.Error("MarshalBinary failed")
+	}
+	if s := m2.Get("B"); s != "This" {
+	    t.Error("MarshalBinary failed")
+	}
 }

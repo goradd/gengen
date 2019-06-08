@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
+	"fmt"
+	"sort"
+	"strings"
 	"sync"
 
 
@@ -347,6 +350,25 @@ func (o *SafeMap) UnmarshalJSON(in []byte) (err error) {
 
 func (o *SafeMap) IsNil() bool {
 	return o == nil
+}
+
+func (o *SafeMap) String() string {
+	var s string
+
+    // sort on keys to stabilize order
+	keys := o.Keys()
+    sort.Slice(keys, func(a,b int) bool {
+        return keys[a] < keys[b]
+    })
+
+	s = "{"
+	for _,k := range keys {
+	    v := o.Get(k)
+	    s += fmt.Sprintf(`%#v:%#v,`, k, v)
+	}
+	s = strings.TrimRight(s, ",")
+	s += "}"
+	return s
 }
 
 

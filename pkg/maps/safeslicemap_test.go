@@ -106,6 +106,8 @@ func ExampleSafeSliceMap_Range() {
 
 	// Iterate after sorting keys
 	m.SortByKeys()
+	m.Set("D", "Other2")
+
 	m.Range(func(key string, val interface{}) bool {
 		fmt.Printf("%s:%s,", key, val)
 		return true // keep iterating to the end
@@ -113,7 +115,7 @@ func ExampleSafeSliceMap_Range() {
 	fmt.Println()
 
 	// Output: B:This,A:That,C:Other,
-	// A:That,B:This,C:Other,
+	// A:That,B:This,C:Other,D:Other2,
 }
 
 func ExampleSafeSliceMap_MarshalBinary() {
@@ -265,6 +267,30 @@ func TestSafeSliceMap_SetAt(t *testing.T) {
         t.Errorf("Beginning insert failed. Expected G and got %s", m.GetAt(1))
     }
 }
+
+func TestSafeSliceMapLoaders(t *testing.T) {
+    n := map[string]interface{}{"a":1,"b":"2","c":3.0, "d":true}
+    m := NewSafeSliceMapFromMap(n)
+
+    if i,ok := m.LoadInt("a"); i != 1 || !ok {
+        t.Error("LoadInt failed")
+    }
+    if j,ok := m.LoadString("b"); j != "2" || !ok {
+        t.Error("LoadString failed")
+    }
+    if k,ok := m.LoadFloat64("c"); k != 3.0 || !ok {
+        t.Error("LoadFloat failed")
+    }
+    if l,ok := m.LoadBool("d"); l != true || !ok {
+        t.Error("LoadBool failed")
+    }
+
+    if _,ok := m.LoadFloat64("d"); ok {
+        t.Error("Type check failed")
+    }
+
+}
+
 
 
 func TestSafeSliceMapEmpty(t *testing.T) {

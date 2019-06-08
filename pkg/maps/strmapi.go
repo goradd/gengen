@@ -27,4 +27,5 @@ type StringMapI interface {
 	// Range will iterate over the keys and values in the map. Pattern is taken from sync.Map
 	Range(f func(key string, value string) bool)
 	Merge(i StringMapI)
+	String() string
 }
