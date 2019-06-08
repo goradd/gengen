@@ -8,14 +8,12 @@ objects, and includes some common objects as well.
 Gengen is pretty simple, and just combines a template with a json configuration file you can use to
 define values in the template. It expects the template to be the stdin or the only argument
 to the command line. Output will be directed to the file you specify with the -o option,
-or stdout if no file is specified. 
+or stdout if no file is specified.
+
 This design means gengen does not have additional dependencies, is easily installed 
 using *go get*, is cross-platform, and works well in go:generate lines.
 
-When specifying the config file or input file, you can use the word "GOPATH" to refer
-to the current go path in the path to either file. For example, ```GOPATH/src/myfile.tmpl```.
-
-Configuration files can start with comments. Gengen will look for the first open bracket,
+Configuration files can contain comments at the beginning. Gengen will look for the first open bracket,
 and start reading its json input from there.
 
 ## Installation
@@ -43,7 +41,7 @@ gengen -c github.com/goradd/gengen/templates/map_src/safe_test.json
 ```
 
 `gengen` will see the `github.com/goradd/gengen` as a module or package path, and substitute the real path. This works
-whether or not you are using modules (a new feature in GO 1.11).
+whether or not you are using modules.
 
 Environment variables can be inserted into the path using this syntax: `$var` or `${var}`. This works on all platforms.
 
