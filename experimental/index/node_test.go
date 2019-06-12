@@ -12,7 +12,7 @@ func TestNodeInsert(t *testing.T) {
 	index2 := makeSampleStringSlice(n)
 
 	for i := 0; i < n; i++ {
-		if string(index.GetAt(i)) != index2[i] {
+		if string(GetAt(i)) != index2[i] {
 			t.Fail()
 		}
 	}
@@ -26,7 +26,7 @@ func makeSampleStringIndex(n int) Index {
 
 	for i := 0; i < n; i++ {
 		s := strconv.Itoa(i)
-		index.Add(BlockType(s))
+		Add(BlockType(s))
 	}
 	return index
 }
@@ -39,7 +39,7 @@ func makeSampleStringIndex2(n int) Index2 {
 
 	for i := 0; i < n; i++ {
 		s := strconv.Itoa(i)
-		index.Add(BlockType(s))
+		Add(BlockType(s))
 	}
 	return index
 }

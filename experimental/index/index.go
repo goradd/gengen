@@ -17,12 +17,12 @@ type BlockType string // could be anything usable to index a map
 
 type Index struct {
 	itemCount int
-	lessF func(a,b BlockType) bool
-	root iNode
+	lessF     func(a,b BlockType) bool
+	root      iNode
 }
 
 func NewIndex(lessF func(a,b BlockType) bool) Index {
-	return Index{lessF:lessF, root:iNode{data:make([]BlockType, 0, 32)}}
+	return Index{lessF:lessF, root: iNode{data: make([]BlockType, 0, 32)}}
 }
 
 func (i *Index) Add(item BlockType) {
@@ -34,10 +34,10 @@ func (i *Index) Add(item BlockType) {
 }
 
 func (i *Index) GetAt(n int) BlockType {
-	return i.root.getAt(n)
+	return getAt(n)
 }
 
 func (i *Index) insertAt(loc int, item BlockType) {
-	i.root.insertAt(loc, item)
+	insertAt(loc, item)
 	i.itemCount ++
 }
