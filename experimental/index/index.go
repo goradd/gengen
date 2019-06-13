@@ -34,10 +34,10 @@ func (i *Index) Add(item BlockType) {
 }
 
 func (i *Index) GetAt(n int) BlockType {
-	return getAt(n)
+	return i.root.getAt(n)
 }
 
 func (i *Index) insertAt(loc int, item BlockType) {
-	insertAt(loc, item)
+	i.root.insertAt(loc, item)
 	i.itemCount ++
 }
