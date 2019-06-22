@@ -394,6 +394,10 @@ func (o *SliceMap) UnmarshalJSON(data []byte) (err error) {
 
 // Merge the given map into the current one
 func (o *SliceMap) Merge(i MapI) {
+	if o == nil {
+		panic("The map must be created before being used.")
+	}
+
 	if i != nil {
 		i.Range(func(k string, v interface{}) bool {
 			o.Set(k, v)
@@ -401,6 +405,22 @@ func (o *SliceMap) Merge(i MapI) {
 		})
 	}
 }
+
+// MergeMap merges the given standard map with the current one. The given one takes precedent on collisions.
+func (o *SliceMap) MergeMap(m map[string]interface{}) {
+	if m == nil {
+		return
+	}
+
+	if o == nil {
+		panic("The map must be created before being used.")
+	}
+
+	for k,v := range m {
+		o.Set(k, v)
+	}
+}
+
 
 // Range will call the given function with every key and value in the order
 // they were placed in the map, or in if you sorted the map, in your custom order.

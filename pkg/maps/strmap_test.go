@@ -158,11 +158,31 @@ func ExampleStringMap_Merge() {
 
     n := NewStringMap()
     n.Set("D","Last")
-	m.Merge(n)
+	n.Merge(m)
 
-	fmt.Println(m.Get("D"))
-	//Output: Last
+	fmt.Println(n.Get("C"))
+	fmt.Println(n.Get("D"))
+	// Output: Other
+	// Last
 }
+
+func ExampleStringMap_MergeMap() {
+	m := map[string]string {
+	    "B": "This",
+	    "A": "That",
+	    "C": "Other",
+	}
+
+    n := NewStringMap()
+    n.Set("D","Last")
+	n.MergeMap(m)
+
+	fmt.Println(n.Get("C"))
+	fmt.Println(n.Get("D"))
+	// Output: Other
+	// Last
+}
+
 
 func ExampleNewStringMapFrom() {
     n:= NewStringMap()

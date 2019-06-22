@@ -173,15 +173,33 @@ func ExampleSliceMap_Merge() {
 
 	m.Set("B", "This")
 	m.Set("A", "That")
-	m.Set("C", "Other")
+	m.Set("C", 5)
 
-    n := new (Map)
+    n := new (SliceMap)
+    n.SortByKeys()
     n.Set("D", "Last")
-	m.Merge(n)
-
-	fmt.Println(m.GetAt(3))
-	//Output: Last
+	n.Merge(m)
+	values := n.Values()
+	fmt.Println(values)
+	//Output: [That This 5 Last]
 }
+
+func ExampleSliceMap_MergeMap() {
+	m := map[string]interface{} {
+	    "B": "This",
+	    "A": "That",
+	    "C": 5,
+	}
+
+    n := NewSliceMap()
+    n.SortByKeys()
+    n.Set("D","Last")
+	n.MergeMap(m)
+	values := n.Values()
+	fmt.Println(values)
+	// Output: [That This 5 Last]
+}
+
 
 func ExampleSliceMap_Values() {
 	m := new (SliceMap)
