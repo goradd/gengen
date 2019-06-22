@@ -507,10 +507,6 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) UnmarshalJSON(data []byte) (
 
 // Merge the given map into the current one
 func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Merge(i {{.KeyType}}{{.ValType}}MapI) {
-	if o == nil {
-		panic("The map must be created before being used.")
-	}
-
 	if i != nil {
 		i.Range(func(k {{.keytype}}, v {{.valtype}}) bool {
 			o.Set(k, v)
@@ -523,10 +519,6 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Merge(i {{.KeyType}}{{.ValTy
 func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) MergeMap(m map[{{.keytype}}]{{.valtype}}) {
 	if m == nil {
 		return
-	}
-
-	if o == nil {
-		panic("The map must be created before being used.")
 	}
 
 	for k,v := range m {

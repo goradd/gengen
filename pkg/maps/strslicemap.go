@@ -367,10 +367,6 @@ func (o *StringSliceMap) UnmarshalJSON(data []byte) (err error) {
 
 // Merge the given map into the current one
 func (o *StringSliceMap) Merge(i StringMapI) {
-	if o == nil {
-		panic("The map must be created before being used.")
-	}
-
 	if i != nil {
 		i.Range(func(k string, v string) bool {
 			o.Set(k, v)
@@ -383,10 +379,6 @@ func (o *StringSliceMap) Merge(i StringMapI) {
 func (o *StringSliceMap) MergeMap(m map[string]string) {
 	if m == nil {
 		return
-	}
-
-	if o == nil {
-		panic("The map must be created before being used.")
 	}
 
 	for k,v := range m {

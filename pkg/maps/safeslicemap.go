@@ -426,10 +426,6 @@ func (o *SafeSliceMap) UnmarshalJSON(data []byte) (err error) {
 
 // Merge the given map into the current one
 func (o *SafeSliceMap) Merge(i MapI) {
-	if o == nil {
-		panic("The map must be created before being used.")
-	}
-
 	if i != nil {
 		i.Range(func(k string, v interface{}) bool {
 			o.Set(k, v)
@@ -442,10 +438,6 @@ func (o *SafeSliceMap) Merge(i MapI) {
 func (o *SafeSliceMap) MergeMap(m map[string]interface{}) {
 	if m == nil {
 		return
-	}
-
-	if o == nil {
-		panic("The map must be created before being used.")
 	}
 
 	for k,v := range m {
