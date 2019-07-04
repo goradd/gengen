@@ -316,6 +316,29 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Merge(i {{.KeyType}}{{.ValType}}M
 	})
 }
 
+// MergeMap merges the given standard map with the current one. The given one takes precedent on collisions.
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) MergeMap(m map[{{.keytype}}]{{.valtype}}) {
+	if m == nil {
+		return
+	}
+
+	if o == nil {
+		panic("The map must be created before being used.")
+	}
+
+{{- if .Safe}}
+	o.Lock()
+	defer o.Unlock(){{end}}
+
+	if o.items == nil {
+	    o.items = make(map[{{.keytype}}]{{.valtype}}, len(m))
+	}
+	for k,v := range m {
+		o.items[k] = v
+	}
+}
+
+
 // Equals returns true if all the keys in the given map exist in this map, and the values are the same
 func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Equals(i {{.KeyType}}{{.ValType}}MapI) bool {
     len := o.Len()

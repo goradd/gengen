@@ -55,18 +55,21 @@ func NewStringSliceMapFromMap(i map[string]string) *StringSliceMap {
 // on an ongoing basis. Normally, items will iterate in the order they were added.
 // The sort function is a Less function, that returns true when item 1 is "less" than item 2.
 // The sort function receives both the keys and values, so it can use either to decide how to sort.
-func (o *StringSliceMap) SetSortFunc(f func(key1,key2 string, val1, val2 string) bool) {
+func (o *StringSliceMap) SetSortFunc(f func(key1,key2 string, val1, val2 string) bool) *StringSliceMap {
     o.lessF = f
     if f != nil && len(o.order) > 0 {
         sort.Slice(o.order, func(i,j int) bool {
             return f(o.order[i], o.order[j], o.items[o.order[i]], o.items[o.order[j]])
         })
     }
+
+    return o
 }
 
 // SortByKeys sets up the map to have its sort order sort by keys, lowest to highest
-func (o *StringSliceMap) SortByKeys() {
+func (o *StringSliceMap) SortByKeys() *StringSliceMap {
     o.SetSortFunc(keySortStringSliceMap)
+    return o
 }
 
 func keySortStringSliceMap(key1, key2 string, val1, val2 string) bool {
@@ -374,6 +377,18 @@ func (o *StringSliceMap) Merge(i StringMapI) {
 		})
 	}
 }
+
+// MergeMap merges the given standard map with the current one. The given one takes precedent on collisions.
+func (o *StringSliceMap) MergeMap(m map[string]string) {
+	if m == nil {
+		return
+	}
+
+	for k,v := range m {
+		o.Set(k, v)
+	}
+}
+
 
 // Range will call the given function with every key and value in the order
 // they were placed in the map, or in if you sorted the map, in your custom order.

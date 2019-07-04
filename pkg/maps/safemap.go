@@ -264,6 +264,27 @@ func (o *SafeMap) Merge(i MapI) {
 	})
 }
 
+// MergeMap merges the given standard map with the current one. The given one takes precedent on collisions.
+func (o *SafeMap) MergeMap(m map[string]interface{}) {
+	if m == nil {
+		return
+	}
+
+	if o == nil {
+		panic("The map must be created before being used.")
+	}
+	o.Lock()
+	defer o.Unlock()
+
+	if o.items == nil {
+	    o.items = make(map[string]interface{}, len(m))
+	}
+	for k,v := range m {
+		o.items[k] = v
+	}
+}
+
+
 // Equals returns true if all the keys in the given map exist in this map, and the values are the same
 func (o *SafeMap) Equals(i MapI) bool {
     len := o.Len()

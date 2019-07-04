@@ -158,11 +158,31 @@ func ExampleSafeStringMap_Merge() {
 
     n := NewSafeStringMap()
     n.Set("D","Last")
-	m.Merge(n)
+	n.Merge(m)
 
-	fmt.Println(m.Get("D"))
-	//Output: Last
+	fmt.Println(n.Get("C"))
+	fmt.Println(n.Get("D"))
+	// Output: Other
+	// Last
 }
+
+func ExampleSafeStringMap_MergeMap() {
+	m := map[string]string {
+	    "B": "This",
+	    "A": "That",
+	    "C": "Other",
+	}
+
+    n := NewSafeStringMap()
+    n.Set("D","Last")
+	n.MergeMap(m)
+
+	fmt.Println(n.Get("C"))
+	fmt.Println(n.Get("D"))
+	// Output: Other
+	// Last
+}
+
 
 func ExampleNewSafeStringMapFrom() {
     n:= NewSafeStringMap()

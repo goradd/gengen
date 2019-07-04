@@ -197,13 +197,31 @@ func ExampleSafeStringSliceMap_Merge() {
 	m.Set("A", "That")
 	m.Set("C", "Other")
 
-    n := new (StringMap)
+    n := new (SafeStringSliceMap)
+    n.SortByKeys()
     n.Set("D", "Last")
-	m.Merge(n)
-
-	fmt.Println(m.GetAt(3))
-	//Output: Last
+	n.Merge(m)
+	values := n.Values()
+	fmt.Println(values)
+	//Output: [That This Other Last]
 }
+
+func ExampleSafeStringSliceMap_MergeMap() {
+	m := map[string]string {
+	    "B": "This",
+	    "A": "That",
+	    "C": "Other",
+	}
+
+    n := NewSafeStringSliceMap()
+    n.SortByKeys()
+    n.Set("D","Last")
+	n.MergeMap(m)
+	values := n.Values()
+	fmt.Println(values)
+	// Output: [That This Other Last]
+}
+
 
 func ExampleSafeStringSliceMap_Delete() {
     n:= map[string]string{"a":"this","b":"that","c":"other"}

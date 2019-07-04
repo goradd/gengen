@@ -250,11 +250,31 @@ func ExampleMap_Merge() {
 
     n := NewMap()
     n.Set("D",5)
-	m.Merge(n)
+	n.Merge(m)
 
-	fmt.Println(m.Get("D"))
-	//Output: 5
+	fmt.Println(n.Get("C"))
+	fmt.Println(n.Get("D"))
+	// Output: Other
+	// 5
 }
+
+func ExampleMap_MergeMap() {
+	m := map[string]interface{} {
+	    "B": "This",
+	    "A": "That",
+	    "C": 6.1,
+	}
+
+    n := NewMap()
+    n.Set("D","Last")
+	n.MergeMap(m)
+
+	fmt.Println(n.Get("C"))
+	fmt.Println(n.Get("D"))
+	// Output: 6.1
+	// Last
+}
+
 
 func ExampleNewMapFrom() {
     n := NewMap()
