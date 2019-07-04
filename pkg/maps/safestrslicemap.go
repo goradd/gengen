@@ -57,7 +57,7 @@ func NewSafeStringSliceMapFromMap(i map[string]string) *SafeStringSliceMap {
 // on an ongoing basis. Normally, items will iterate in the order they were added.
 // The sort function is a Less function, that returns true when item 1 is "less" than item 2.
 // The sort function receives both the keys and values, so it can use either to decide how to sort.
-func (o *SafeStringSliceMap) SetSortFunc(f func(key1,key2 string, val1, val2 string) bool) {
+func (o *SafeStringSliceMap) SetSortFunc(f func(key1,key2 string, val1, val2 string) bool) *SafeStringSliceMap {
         o.Lock()
     o.lessF = f
     if f != nil && len(o.order) > 0 {
@@ -66,11 +66,14 @@ func (o *SafeStringSliceMap) SetSortFunc(f func(key1,key2 string, val1, val2 str
         })
     }
         o.Unlock()
+
+    return o
 }
 
 // SortByKeys sets up the map to have its sort order sort by keys, lowest to highest
-func (o *SafeStringSliceMap) SortByKeys() {
+func (o *SafeStringSliceMap) SortByKeys() *SafeStringSliceMap {
     o.SetSortFunc(keySortSafeStringSliceMap)
+    return o
 }
 
 func keySortSafeStringSliceMap(key1, key2 string, val1, val2 string) bool {

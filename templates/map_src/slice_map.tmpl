@@ -87,7 +87,7 @@ func New{{.Safe}}{{.KeyType}}{{.ValType}}SliceMapFromMap(i map[{{.keytype}}]{{.v
 // on an ongoing basis. Normally, items will iterate in the order they were added.
 // The sort function is a Less function, that returns true when item 1 is "less" than item 2.
 // The sort function receives both the keys and values, so it can use either to decide how to sort.
-func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) SetSortFunc(f func(key1,key2 {{.keytype}}, val1, val2 {{.valtype}}) bool) {
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) SetSortFunc(f func(key1,key2 {{.keytype}}, val1, val2 {{.valtype}}) bool) *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap {
     {{- if .Safe}}
         o.Lock(){{end}}
     o.lessF = f
@@ -98,11 +98,14 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) SetSortFunc(f func(key1,key2
     }
     {{- if .Safe}}
         o.Unlock(){{end}}
+
+    return o
 }
 
 // SortByKeys sets up the map to have its sort order sort by keys, lowest to highest
-func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) SortByKeys() {
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) SortByKeys() *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap {
     o.SetSortFunc(keySort{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap)
+    return o
 }
 
 func keySort{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap(key1, key2 {{.keytype}}, val1, val2 {{.valtype}}) bool {
