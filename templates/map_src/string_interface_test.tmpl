@@ -70,12 +70,6 @@ func Test{{.MapType}}Map(t *testing.T) {
 		t.Error("Set after clear failed.")
 	}
 
- 	m.Clear()
-    m.SetChanged("E", 15.5)
-    if m.Get("E") != 15.5 {
-        t.Error("SetChanged after clear failed.")
-    }
-
     n := m.Copy()
     if n.Get("E") != 15.5 {
         t.Error("Copy failed.")
@@ -133,25 +127,6 @@ func Test{{.MapType}}Empty(t *testing.T) {
 
 }
 
-func Test{{.MapType}}MapChange(t *testing.T) {
-	m := New{{.MapType}}Map()
-
-	m.Set("B", "This")
-	m.Set("A", "That")
-	m.Set("C", 5)
-
-	if changed := m.SetChanged("D", 6); !changed {
-		t.Error("Set did not produce a change flag")
-	}
-
-	if changed := m.SetChanged("D", 6); changed {
-		t.Error("Set again erroneously produced a change flag")
-	}
-
-    if changed := m.SetChanged("D", "That"); !changed {
-        t.Error("Set again did not produce a change flag")
-    }
-}
 
 func Test{{.MapType}}MapNotEqual(t *testing.T) {
 	m := New{{.MapType}}Map()

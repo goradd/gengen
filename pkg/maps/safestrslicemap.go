@@ -91,6 +91,7 @@ func valueSortSafeStringSliceMap(key1, key2 string, val1, val2 string) bool {
 }
 
 
+
 // SetChanged sets the value.
 // It returns true if something in the map changed. If the key
 // was already in the map, and you have not provided a sort function,
@@ -140,10 +141,48 @@ func (o *SafeStringSliceMap) SetChanged(key string, val string) (changed bool) {
 	return
 }
 
+
 // Set sets the given key to the given value.
 // If the key already exists, the range order will not change.
 func (o *SafeStringSliceMap) Set(key string, val string) {
-	o.SetChanged(key, val)
+	var ok bool
+	var oldVal string
+
+	if o == nil {
+	    panic("You must initialize the map before using it.")
+	}
+    o.Lock()
+
+	if o.items == nil {
+	    o.items = make(map[string]string)
+	}
+
+	_, ok = o.items[key]
+    if o.lessF != nil {
+        if ok {
+            // delete old key location
+            loc := sort.Search (len(o.items), func(n int) bool {
+                return !o.lessF(o.order[n], key, o.items[o.order[n]], oldVal)
+            })
+            o.order = append(o.order[:loc], o.order[loc+1:]...)
+        }
+
+        loc := sort.Search (len(o.order), func(n int) bool {
+            return o.lessF(key, o.order[n], val, o.items[o.order[n]])
+        })
+        // insert
+        o.order = append(o.order, key)
+        copy(o.order[loc+1:], o.order[loc:])
+        o.order[loc] = key
+    } else {
+        if !ok {
+            o.order = append(o.order, key)
+        }
+    }
+    o.items[key] = val
+    o.Unlock()
+
+	return
 }
 
 // SetAt sets the given key to the given value, but also inserts it at the index specified.  If the index is bigger than
@@ -244,6 +283,23 @@ func (o *SafeStringSliceMap) Has(key string) (ok bool) {
     o.RUnlock()
 	return
 }
+
+
+// Is returns true if the given key exists in the map and has the given value.
+func (o *SafeStringSliceMap) Is(key string, val string) (is bool) {
+    if o == nil {
+		return
+	}
+
+    var v string
+    o.RLock()
+    if o.items != nil {
+ 	    v, is = o.items[key]
+    }
+    o.RUnlock()
+	return is && v == val
+}
+
 
 // GetAt returns the value based on its position. If the position is out of bounds, an empty value is returned.
 func (o *SafeStringSliceMap) GetAt(position int) (val string) {

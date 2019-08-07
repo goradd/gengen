@@ -82,13 +82,11 @@ func keySortSafeSliceMap(key1, key2 string, val1, val2 interface{}) bool {
 
 
 
-// SetChanged sets the value.
-// It returns true if something in the map changed. If the key
-// was already in the map, and you have not provided a sort function,
-// the order will not change, but the value will be replaced. If you wanted the
-// order to change, you must Delete then call SetChanged. If you have previously set a sort function,
-// the order will be updated.
-func (o *SafeSliceMap) SetChanged(key string, val interface{}) (changed bool) {
+
+
+// Set sets the given key to the given value.
+// If the key already exists, the range order will not change.
+func (o *SafeSliceMap) Set(key string, val interface{}) {
 	var ok bool
 	var oldVal interface{}
 
@@ -101,40 +99,32 @@ func (o *SafeSliceMap) SetChanged(key string, val interface{}) (changed bool) {
 	    o.items = make(map[string]interface{})
 	}
 
-	if oldVal, ok = o.items[key]; !ok || oldVal != val {
-        if o.lessF != nil {
-            if ok {
-                // delete old key location
-                loc := sort.Search (len(o.items), func(n int) bool {
-                    return !o.lessF(o.order[n], key, o.items[o.order[n]], oldVal)
-                })
-                o.order = append(o.order[:loc], o.order[loc+1:]...)
-            }
-
-            loc := sort.Search (len(o.order), func(n int) bool {
-                return o.lessF(key, o.order[n], val, o.items[o.order[n]])
+	_, ok = o.items[key]
+    if o.lessF != nil {
+        if ok {
+            // delete old key location
+            loc := sort.Search (len(o.items), func(n int) bool {
+                return !o.lessF(o.order[n], key, o.items[o.order[n]], oldVal)
             })
-            // insert
+            o.order = append(o.order[:loc], o.order[loc+1:]...)
+        }
+
+        loc := sort.Search (len(o.order), func(n int) bool {
+            return o.lessF(key, o.order[n], val, o.items[o.order[n]])
+        })
+        // insert
+        o.order = append(o.order, key)
+        copy(o.order[loc+1:], o.order[loc:])
+        o.order[loc] = key
+    } else {
+        if !ok {
             o.order = append(o.order, key)
-            copy(o.order[loc+1:], o.order[loc:])
-            o.order[loc] = key
-        } else {
-		    if !ok {
-			    o.order = append(o.order, key)
-		    }
-		}
-		o.items[key] = val
-		changed = true
-	}
+        }
+    }
+    o.items[key] = val
     o.Unlock()
 
 	return
-}
-
-// Set sets the given key to the given value.
-// If the key already exists, the range order will not change.
-func (o *SafeSliceMap) Set(key string, val interface{}) {
-	o.SetChanged(key, val)
 }
 
 // SetAt sets the given key to the given value, but also inserts it at the index specified.  If the index is bigger than
@@ -271,6 +261,8 @@ func (o *SafeSliceMap) Has(key string) (ok bool) {
     o.RUnlock()
 	return
 }
+
+
 
 // GetAt returns the value based on its position. If the position is out of bounds, an empty value is returned.
 func (o *SafeSliceMap) GetAt(position int) (val interface{}) {

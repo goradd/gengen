@@ -52,6 +52,7 @@ func (o *SafeStringMap) Clear() {
     o.Unlock()
 }
 
+
 // SetChanged sets the key to the value and returns a boolean indicating whether doing this caused
 // the map to change. It will return true if the key did not first exist, or if the value associated
 // with the key was different than the new value.
@@ -74,6 +75,7 @@ func (o *SafeStringMap) SetChanged(key string, val string) (changed bool) {
     o.Unlock()
 	return
 }
+
 
 // Set sets the key to the given value
 func (o *SafeStringMap) Set(key string, val string) {
@@ -137,6 +139,23 @@ func (o *SafeStringMap) Has(key string) (exists bool) {
     o.RUnlock()
 	return
 }
+
+
+// Is returns true if the given key exists in the map and has the given value.
+func (o *SafeStringMap) Is(key string, val string) (is bool) {
+    if o == nil {
+		return
+	}
+
+    var v string
+    o.RLock()
+    if o.items != nil {
+ 	    v, is = o.items[key]
+    }
+    o.RUnlock()
+	return is && v == val
+}
+
 
 // Values returns a slice of the values. It will return a nil slice if the map is empty.
 // Multiple calls to Values will result in the same list of values, but may be in a different order.

@@ -47,6 +47,7 @@ func (o *StringMap) Clear() {
 	o.items = nil
 }
 
+
 // SetChanged sets the key to the value and returns a boolean indicating whether doing this caused
 // the map to change. It will return true if the key did not first exist, or if the value associated
 // with the key was different than the new value.
@@ -67,6 +68,7 @@ func (o *StringMap) SetChanged(key string, val string) (changed bool) {
 	}
 	return
 }
+
 
 // Set sets the key to the given value
 func (o *StringMap) Set(key string, val string) {
@@ -122,6 +124,21 @@ func (o *StringMap) Has(key string) (exists bool) {
     }
 	return
 }
+
+
+// Is returns true if the given key exists in the map and has the given value.
+func (o *StringMap) Is(key string, val string) (is bool) {
+    if o == nil {
+		return
+	}
+
+    var v string
+    if o.items != nil {
+ 	    v, is = o.items[key]
+    }
+	return is && v == val
+}
+
 
 // Values returns a slice of the values. It will return a nil slice if the map is empty.
 // Multiple calls to Values will result in the same list of values, but may be in a different order.

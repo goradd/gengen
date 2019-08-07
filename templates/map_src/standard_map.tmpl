@@ -20,6 +20,8 @@ valueIsCopier: If true, the value implements a Copy function which returns a val
                be used to make a copy.
 keyIsCopier: If true, the key implements a Copy function which returns a value type. Otherwise, a golang = will
                be used to make a copy.
+valueIsComparable: Set this to true if standard golang == will work for comparing values. This will produce a
+             Is() function that lets you see if a value exists in the map.
 
 */ -}}
 package {{.package}}
@@ -82,6 +84,7 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Clear() {
     o.Unlock(){{end}}
 }
 
+{{if .valueIsComparable}}
 // SetChanged sets the key to the value and returns a boolean indicating whether doing this caused
 // the map to change. It will return true if the key did not first exist, or if the value associated
 // with the key was different than the new value.
@@ -106,6 +109,7 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) SetChanged(key {{.keytype}}, val 
     o.Unlock(){{end}}
 	return
 }
+{{end}}
 
 // Set sets the key to the given value
 func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Set(key {{.keytype}}, val {{.valtype}}) {
@@ -213,6 +217,25 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Has(key {{.keytype}}) (exists boo
     o.RUnlock(){{end}}
 	return
 }
+
+{{if .valueIsComparable}}
+// Is returns true if the given key exists in the map and has the given value.
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}Map) Is(key {{.keytype}}, val {{.valtype}}) (is bool) {
+    if o == nil {
+		return
+	}
+
+    var v {{.valtype}}
+{{- if .Safe}}
+    o.RLock(){{end}}
+    if o.items != nil {
+ 	    v, is = o.items[key]
+    }
+{{- if .Safe}}
+    o.RUnlock(){{end}}
+	return is && v == val
+}
+{{end}}
 
 // Values returns a slice of the values. It will return a nil slice if the map is empty.
 // Multiple calls to Values will result in the same list of values, but may be in a different order.
