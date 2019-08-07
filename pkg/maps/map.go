@@ -47,26 +47,7 @@ func (o *Map) Clear() {
 	o.items = nil
 }
 
-// SetChanged sets the key to the value and returns a boolean indicating whether doing this caused
-// the map to change. It will return true if the key did not first exist, or if the value associated
-// with the key was different than the new value.
-func (o *Map) SetChanged(key string, val interface{}) (changed bool) {
-	var ok bool
-	var oldVal interface{}
 
-	if o == nil {
-		panic("The map must be created before being used.")
-	}
-	if o.items == nil {
-	    o.items = make(map[string]interface{})
-	}
-
-	if oldVal, ok = o.items[key]; !ok || oldVal != val {
-		o.items[key] = val
-		changed = true
-	}
-	return
-}
 
 // Set sets the key to the given value
 func (o *Map) Set(key string, val interface{}) {
@@ -158,6 +139,8 @@ func (o *Map) Has(key string) (exists bool) {
     }
 	return
 }
+
+
 
 // Values returns a slice of the values. It will return a nil slice if the map is empty.
 // Multiple calls to Values will result in the same list of values, but may be in a different order.

@@ -123,6 +123,7 @@ func valueSort{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap(key1, key2 {{.keytype}},
 }
 {{end}}
 
+{{if .valueIsComparable}}
 // SetChanged sets the value.
 // It returns true if something in the map changed. If the key
 // was already in the map, and you have not provided a sort function,
@@ -175,11 +176,53 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) SetChanged(key {{.keytype}},
 
 	return
 }
+{{end}}
 
 // Set sets the given key to the given value.
 // If the key already exists, the range order will not change.
 func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Set(key {{.keytype}}, val {{.valtype}}) {
-	o.SetChanged(key, val)
+	var ok bool
+	var oldVal {{.valtype}}
+
+	if o == nil {
+	    panic("You must initialize the map before using it.")
+	}
+
+{{- if .Safe}}
+    o.Lock(){{end}}
+
+	if o.items == nil {
+	    o.items = make(map[{{.keytype}}]{{.valtype}})
+	}
+
+	_, ok = o.items[key]
+    if o.lessF != nil {
+        if ok {
+            // delete old key location
+            loc := sort.Search (len(o.items), func(n int) bool {
+                return !o.lessF(o.order[n], key, o.items[o.order[n]], oldVal)
+            })
+            o.order = append(o.order[:loc], o.order[loc+1:]...)
+        }
+
+        loc := sort.Search (len(o.order), func(n int) bool {
+            return o.lessF(key, o.order[n], val, o.items[o.order[n]])
+        })
+        // insert
+        o.order = append(o.order, key)
+        copy(o.order[loc+1:], o.order[loc:])
+        o.order[loc] = key
+    } else {
+        if !ok {
+            o.order = append(o.order, key)
+        }
+    }
+    o.items[key] = val
+
+{{- if .Safe}}
+    o.Unlock(){{end}}
+
+	return
 }
 
 // SetAt sets the given key to the given value, but also inserts it at the index specified.  If the index is bigger than
@@ -326,6 +369,25 @@ func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Has(key {{.keytype}}) (ok bo
     o.RUnlock(){{end}}
 	return
 }
+
+{{if .valueIsComparable}}
+// Is returns true if the given key exists in the map and has the given value.
+func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) Is(key {{.keytype}}, val {{.valtype}}) (is bool) {
+    if o == nil {
+		return
+	}
+
+    var v {{.valtype}}
+{{- if .Safe}}
+    o.RLock(){{end}}
+    if o.items != nil {
+ 	    v, is = o.items[key]
+    }
+{{- if .Safe}}
+    o.RUnlock(){{end}}
+	return is && v == val
+}
+{{end}}
 
 // GetAt returns the value based on its position. If the position is out of bounds, an empty value is returned.
 func (o *{{.Safe}}{{.KeyType}}{{.ValType}}SliceMap) GetAt(position int) (val {{.valtype}}) {

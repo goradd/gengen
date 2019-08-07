@@ -70,12 +70,6 @@ func TestSafeMap(t *testing.T) {
 		t.Error("Set after clear failed.")
 	}
 
- 	m.Clear()
-    m.SetChanged("E", 15.5)
-    if m.Get("E") != 15.5 {
-        t.Error("SetChanged after clear failed.")
-    }
-
     n := m.Copy()
     if n.Get("E") != 15.5 {
         t.Error("Copy failed.")
@@ -133,25 +127,6 @@ func TestSafeEmpty(t *testing.T) {
 
 }
 
-func TestSafeMapChange(t *testing.T) {
-	m := NewSafeMap()
-
-	m.Set("B", "This")
-	m.Set("A", "That")
-	m.Set("C", 5)
-
-	if changed := m.SetChanged("D", 6); !changed {
-		t.Error("Set did not produce a change flag")
-	}
-
-	if changed := m.SetChanged("D", 6); changed {
-		t.Error("Set again erroneously produced a change flag")
-	}
-
-    if changed := m.SetChanged("D", "That"); !changed {
-        t.Error("Set again did not produce a change flag")
-    }
-}
 
 func TestSafeMapNotEqual(t *testing.T) {
 	m := NewSafeMap()

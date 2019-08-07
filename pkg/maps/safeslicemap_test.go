@@ -59,9 +59,7 @@ func TestSafeSliceMap(t *testing.T) {
 		t.Error("MapI interface test failed.")
 	}
 
-	if changed := m.SetChanged("F", 9); !changed {
-		t.Error("Add non-string value failed.")
-	}
+	m.Set("F", 9)
 	if m.Get("F") != 9 {
 		t.Error("Add non-string value failed.")
 	}
@@ -73,21 +71,6 @@ func TestSafeSliceMap(t *testing.T) {
 
 }
 
-func TestSafeSliceMapChange(t *testing.T) {
-	m := new (SafeSliceMap)
-
-	m.Set("B", "This")
-	m.Set("A", "That")
-	m.Set("C", "Other")
-
-	if changed := m.SetChanged("D", "And another"); !changed {
-		t.Error("Set did not produce a change flag")
-	}
-
-	if changed := m.SetChanged("D", "And another"); changed {
-		t.Error("Set again erroneously produced a change flag")
-	}
-}
 
 func ExampleSafeSliceMap_Range() {
 	m := new (SafeSliceMap)

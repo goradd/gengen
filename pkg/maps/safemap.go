@@ -52,28 +52,7 @@ func (o *SafeMap) Clear() {
     o.Unlock()
 }
 
-// SetChanged sets the key to the value and returns a boolean indicating whether doing this caused
-// the map to change. It will return true if the key did not first exist, or if the value associated
-// with the key was different than the new value.
-func (o *SafeMap) SetChanged(key string, val interface{}) (changed bool) {
-	var ok bool
-	var oldVal interface{}
 
-	if o == nil {
-		panic("The map must be created before being used.")
-	}
- 	o.Lock()
-	if o.items == nil {
-	    o.items = make(map[string]interface{})
-	}
-
-	if oldVal, ok = o.items[key]; !ok || oldVal != val {
-		o.items[key] = val
-		changed = true
-	}
-    o.Unlock()
-	return
-}
 
 // Set sets the key to the given value
 func (o *SafeMap) Set(key string, val interface{}) {
@@ -173,6 +152,8 @@ func (o *SafeMap) Has(key string) (exists bool) {
     o.RUnlock()
 	return
 }
+
+
 
 // Values returns a slice of the values. It will return a nil slice if the map is empty.
 // Multiple calls to Values will result in the same list of values, but may be in a different order.
